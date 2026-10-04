@@ -7,8 +7,13 @@ export default function AdminManagement({
   const inspectorCount = users.filter(
     (user) => user.role === "Field Inspector"
   ).length;
+
   const citizenCount = users.filter(
     (user) => user.role === "Citizen"
+  ).length;
+
+  const administratorCount = users.filter(
+    (user) => user.role === "Administrator"
   ).length;
 
   const [form, setForm] = useState({
@@ -19,44 +24,76 @@ export default function AdminManagement({
     role: "Citizen",
   });
 
+  const [formError, setFormError] = useState("");
+  const [formSuccess, setFormSuccess] = useState("");
+  const [creatingAccount, setCreatingAccount] = useState(false);
+
   function updateField(field, value) {
     setForm((previous) => ({
       ...previous,
       [field]: value,
     }));
+
+    if (formError) {
+      setFormError("");
+    }
+
+    if (formSuccess) {
+      setFormSuccess("");
+    }
   }
 
   async function createAccount(event) {
     event.preventDefault();
 
+    setFormError("");
+    setFormSuccess("");
+
+    const firstName = form.firstName.trim();
+    const lastName = form.lastName.trim();
+    const email = form.email.trim();
+
     if (
-      !form.firstName ||
-      !form.lastName ||
-      !form.email ||
+      !firstName ||
+      !lastName ||
+      !email ||
       !form.password
     ) {
-      alert("Please complete all account fields.");
+      setFormError(
+        "Please complete all account fields."
+      );
       return;
     }
 
     if (form.password.length < 6) {
-      alert("Password must contain at least 6 characters.");
+      setFormError(
+        "Password must contain at least 6 characters."
+      );
       return;
     }
 
-    const created = await onCreateUser({
-      ...form,
-      birthday: "",
-      mobile: "",
-      address: {
-        houseNumber: "",
-        street: "",
-        barangay: "",
-        city: "",
-      },
-    });
+    setCreatingAccount(true);
 
-    if (created) {
+    try {
+      const created = await onCreateUser({
+        ...form,
+        firstName,
+        lastName,
+        email,
+        birthday: "",
+        mobile: "",
+        address: {
+          houseNumber: "",
+          street: "",
+          barangay: "",
+          city: "",
+        },
+      });
+
+      if (!created) {
+        return;
+      }
+
       setForm({
         firstName: "",
         lastName: "",
@@ -64,133 +101,282 @@ export default function AdminManagement({
         password: "",
         role: "Citizen",
       });
-      alert("Account created successfully.");
+
+      setFormSuccess(
+        "Account created successfully."
+      );
+    } finally {
+      setCreatingAccount(false);
     }
   }
 
   return (
     <main className="main">
-      <p className="eyebrow">ADMINISTRATION</p>
+      <p className="eyebrow">
+        ADMINISTRATION
+      </p>
+
       <h1>Administrator</h1>
+
       <p className="subtitle">
         Manage user accounts and create new
         RoadWatch accounts.
       </p>
 
-      <section className="stats admin-management-stats">
+      <section
+        className="stats admin-management-stats"
+        aria-label="User account statistics"
+      >
         <div>
           <span>Total Users</span>
           <strong>{users.length}</strong>
         </div>
+
         <div>
           <span>Citizens</span>
           <strong>{citizenCount}</strong>
         </div>
+
         <div>
           <span>Inspectors</span>
           <strong>{inspectorCount}</strong>
         </div>
+
         <div>
           <span>Administrators</span>
-          <strong>
-            {users.filter(
-              (user) => user.role === "Administrator"
-            ).length}
-          </strong>
+          <strong>{administratorCount}</strong>
         </div>
       </section>
 
-      <section className="panel">
-        <h2>Create Account</h2>
+      <section
+        className="panel"
+        aria-labelledby="create-account-heading"
+      >
+        <h2 id="create-account-heading">
+          Create Account
+        </h2>
 
-        <form className="form admin-account-form" onSubmit={createAccount}>
+        <form
+          className="form admin-account-form"
+          onSubmit={createAccount}
+        >
           <div className="two-column">
-            <label>
-              First Name
+            <div>
+              <label htmlFor="admin-first-name">
+                First Name
+              </label>
+
               <input
+                id="admin-first-name"
+                name="firstName"
+                type="text"
                 value={form.firstName}
-                onChange={(e) =>
-                  updateField("firstName", e.target.value)
+                autoComplete="given-name"
+                required
+                disabled={creatingAccount}
+                onChange={(event) =>
+                  updateField(
+                    "firstName",
+                    event.target.value
+                  )
                 }
               />
-            </label>
+            </div>
 
-            <label>
-              Last Name
+            <div>
+              <label htmlFor="admin-last-name">
+                Last Name
+              </label>
+
               <input
+                id="admin-last-name"
+                name="lastName"
+                type="text"
                 value={form.lastName}
-                onChange={(e) =>
-                  updateField("lastName", e.target.value)
+                autoComplete="family-name"
+                required
+                disabled={creatingAccount}
+                onChange={(event) =>
+                  updateField(
+                    "lastName",
+                    event.target.value
+                  )
                 }
               />
-            </label>
+            </div>
 
-            <label>
-              Email
+            <div>
+              <label htmlFor="admin-email">
+                Email
+              </label>
+
               <input
+                id="admin-email"
+                name="email"
                 type="email"
                 value={form.email}
-                onChange={(e) =>
-                  updateField("email", e.target.value)
+                autoComplete="email"
+                required
+                disabled={creatingAccount}
+                onChange={(event) =>
+                  updateField(
+                    "email",
+                    event.target.value
+                  )
                 }
               />
-            </label>
+            </div>
 
-            <label>
-              Password
+            <div>
+              <label htmlFor="admin-password">
+                Password
+              </label>
+
               <input
+                id="admin-password"
+                name="password"
                 type="password"
                 value={form.password}
-                onChange={(e) =>
-                  updateField("password", e.target.value)
+                autoComplete="new-password"
+                required
+                minLength={6}
+                disabled={creatingAccount}
+                aria-describedby="admin-password-help"
+                onChange={(event) =>
+                  updateField(
+                    "password",
+                    event.target.value
+                  )
                 }
               />
-            </label>
 
-            <label>
-              Role
+              <small id="admin-password-help">
+                Password must contain at least 6
+                characters.
+              </small>
+            </div>
+
+            <div>
+              <label htmlFor="admin-role">
+                Role
+              </label>
+
               <select
+                id="admin-role"
+                name="role"
                 value={form.role}
-                onChange={(e) =>
-                  updateField("role", e.target.value)
+                disabled={creatingAccount}
+                onChange={(event) =>
+                  updateField(
+                    "role",
+                    event.target.value
+                  )
                 }
               >
-                <option>Citizen</option>
-                <option>Field Inspector</option>
-                <option>Administrator</option>
+                <option value="Citizen">
+                  Citizen
+                </option>
+
+                <option value="Field Inspector">
+                  Field Inspector
+                </option>
+
+                <option value="Administrator">
+                  Administrator
+                </option>
               </select>
-            </label>
+            </div>
           </div>
 
-          <button className="gold" type="submit">
-            Create Account
+          {formError && (
+            <div
+              className="login-error admin-form-error"
+              role="alert"
+              aria-live="assertive"
+            >
+              <span
+                className="login-error-icon"
+                aria-hidden="true"
+              >
+                ⚠
+              </span>
+
+              <span>{formError}</span>
+            </div>
+          )}
+
+          {formSuccess && (
+            <div
+              className="admin-form-success"
+              role="status"
+              aria-live="polite"
+            >
+              <span aria-hidden="true">
+                ✓
+              </span>
+
+              <span>{formSuccess}</span>
+            </div>
+          )}
+
+          <button
+            className="gold"
+            type="submit"
+            disabled={creatingAccount}
+          >
+            {creatingAccount
+              ? "Creating Account..."
+              : "Create Account"}
           </button>
         </form>
       </section>
 
-      <section className="panel">
-        <h2>User Management</h2>
+      <section
+        className="panel"
+        aria-labelledby="user-management-heading"
+      >
+        <h2 id="user-management-heading">
+          User Management
+        </h2>
+
         <div className="table-container">
           <table className="table">
+            <caption className="sr-only">
+              RoadWatch user accounts
+            </caption>
+
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Email</th>
-                <th>Role</th>
-                <th>Status</th>
+                <th scope="col">Name</th>
+                <th scope="col">Email</th>
+                <th scope="col">Role</th>
+                <th scope="col">Status</th>
               </tr>
             </thead>
+
             <tbody>
-              {users.map((user) => (
-                <tr key={user.email}>
-                  <td>
-                    {user.firstName} {user.lastName}
+              {users.length > 0 ? (
+                users.map((user) => (
+                  <tr key={user.email}>
+                    <td>
+                      {user.firstName}{" "}
+                      {user.lastName}
+                    </td>
+
+                    <td>{user.email}</td>
+
+                    <td>{user.role}</td>
+
+                    <td>Active</td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="4">
+                    No user accounts found.
                   </td>
-                  <td>{user.email}</td>
-                  <td>{user.role}</td>
-                  <td>Active</td>
                 </tr>
-              ))}
+              )}
             </tbody>
           </table>
         </div>

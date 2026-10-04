@@ -1,6 +1,5 @@
 ﻿import logo from "../../assets/roadwatch-logo.png";
 
-
 export default function Login({
   email,
   password,
@@ -8,7 +7,13 @@ export default function Login({
   setPassword,
   onLogin,
   setAuthPage,
+  loginError,
 }) {
+  function handleSubmit(event) {
+    event.preventDefault();
+    onLogin();
+  }
+
   return (
     <main className="auth-page">
       <div className="auth-card login-card">
@@ -21,53 +26,71 @@ export default function Login({
         <h1>RoadWatch</h1>
 
         <p className="auth-subtitle">
-          Public Infrastructure Monitoring
-          System
+          Public Infrastructure Monitoring System
         </p>
 
-        <div className="form">
-          <label>
+        <form className="form" onSubmit={handleSubmit}>
+          <label htmlFor="login-email">
             Email Address
-
-            <input
-              type="email"
-              placeholder="Enter your email"
-              value={email}
-              onChange={(e) =>
-                setEmail(e.target.value)
-              }
-            />
           </label>
 
-          <label>
+          <input
+            id="login-email"
+            name="email"
+            type="email"
+            placeholder="Enter your email"
+            value={email}
+            onChange={(event) => setEmail(event.target.value)}
+            autoComplete="email"
+            required
+          />
+
+          <label htmlFor="login-password">
             Password
-
-            <input
-              type="password"
-              placeholder="Enter your password"
-              value={password}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
-            />
           </label>
+
+          <input
+            id="login-password"
+            name="password"
+            type="password"
+            placeholder="Enter your password"
+            value={password}
+            onChange={(event) => setPassword(event.target.value)}
+            autoComplete="current-password"
+            required
+          />
+
+          {loginError && (
+            <div
+              className="login-error"
+              role="alert"
+              aria-live="polite"
+            >
+              <span
+                className="login-error-icon"
+                aria-hidden="true"
+              >
+                ⚠
+              </span>
+
+              <span>{loginError}</span>
+            </div>
+          )}
 
           <button
+            type="submit"
             className="gold auth-submit"
-            onClick={onLogin}
           >
             Log In
           </button>
-        </div>
+        </form>
 
         <p className="auth-footer">
-          Don't have an account?
-
+          Don't have an account?{" "}
           <button
+            type="button"
             className="link-btn"
-            onClick={() =>
-              setAuthPage("register")
-            }
+            onClick={() => setAuthPage("register")}
           >
             Create Account
           </button>
@@ -76,9 +99,3 @@ export default function Login({
     </main>
   );
 }
-
-/* =========================================================
-   REGISTER / CREATE ACCOUNT
-========================================================= */
-
-

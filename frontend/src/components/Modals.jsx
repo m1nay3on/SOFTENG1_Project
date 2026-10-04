@@ -1,31 +1,73 @@
-﻿import logo from "../assets/roadwatch-logo.png";
+﻿import { useEffect, useRef } from "react";
+import logo from "../assets/roadwatch-logo.png";
 
+export default function SuccessModal({
+  message,
+  onClose,
+}) {
+  const closeButtonRef = useRef(null);
 
-export default function SuccessModal({ message, onClose }) {
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener(
+      "keydown",
+      handleKeyDown
+    );
+
+    return () =>
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
+  }, [onClose]);
+
   return (
     <div className="modal-overlay">
-      <div className="modal success-modal">
+      <section
+        className="modal success-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="success-modal-title"
+        aria-describedby="success-modal-message"
+      >
         <img
           src={logo}
-          alt="RoadWatch Logo"
+          alt=""
+          aria-hidden="true"
           className="modal-logo"
         />
 
-        <div className="success-icon">
+        <div
+          className="success-icon"
+          aria-hidden="true"
+        >
           ✓
         </div>
 
-        <h2>Success</h2>
+        <h2 id="success-modal-title">
+          Success
+        </h2>
 
-        <p>{message}</p>
+        <p id="success-modal-message">
+          {message}
+        </p>
 
         <button
+          ref={closeButtonRef}
           className="gold small-btn"
+          type="button"
           onClick={onClose}
         >
           Continue
         </button>
-      </div>
+      </section>
     </div>
   );
 }
@@ -34,37 +76,64 @@ export default function SuccessModal({ message, onClose }) {
    MINOR MODAL
 ========================================================= */
 
-
-
 export function MinorModal({ onClose }) {
+  const closeButtonRef = useRef(null);
+
+  useEffect(() => {
+    closeButtonRef.current?.focus();
+
+    function handleKeyDown(event) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+
+    window.addEventListener(
+      "keydown",
+      handleKeyDown
+    );
+
+    return () =>
+      window.removeEventListener(
+        "keydown",
+        handleKeyDown
+      );
+  }, [onClose]);
+
   return (
     <div className="modal-overlay">
-      <div className="modal warning-modal">
-        <div className="warning-icon">
+      <section
+        className="modal warning-modal"
+        role="alertdialog"
+        aria-modal="true"
+        aria-labelledby="minor-modal-title"
+        aria-describedby="minor-modal-message"
+      >
+        <div
+          className="warning-icon"
+          aria-hidden="true"
+        >
           !
         </div>
 
-        <h2>Registration Blocked</h2>
+        <h2 id="minor-modal-title">
+          Registration Blocked
+        </h2>
 
-        <p>
+        <p id="minor-modal-message">
           You must be at least 18 years old
           to create a RoadWatch account.
         </p>
 
         <button
+          ref={closeButtonRef}
           className="gold small-btn"
+          type="button"
           onClick={onClose}
         >
           Close
         </button>
-      </div>
+      </section>
     </div>
   );
 }
-
-/* =========================================================
-   SIDEBAR
-========================================================= */
-
-
-

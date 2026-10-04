@@ -22,15 +22,40 @@ const ACTIVE_PAGE_STORAGE_KEY = "roadwatch.activePage";
 
 function getRestoredPage(role, reports) {
   const savedPage = sessionStorage.getItem(ACTIVE_PAGE_STORAGE_KEY);
-  if (!savedPage) return "Dashboard";
+
+  if (!savedPage) {
+    return "Dashboard";
+  }
 
   const [page, reportId] = savedPage.split(":");
+
   const rolePages = {
-    Citizen: ["Dashboard", "Submit Report", "My Reports", "Report Details", "Profile"],
-    "Field Inspector": ["Dashboard", "Verification Queue", "Inspector Reports", "Inspector Details", "Profile"],
-    Administrator: ["Dashboard", "Inspected Reports", "Report Completion", "Administrator Tools", "Profile"],
+    Citizen: [
+      "Dashboard",
+      "Submit Report",
+      "My Reports",
+      "Report Details",
+      "Profile",
+    ],
+    "Field Inspector": [
+      "Dashboard",
+      "Verification Queue",
+      "Inspector Reports",
+      "Inspector Details",
+      "Profile",
+    ],
+    Administrator: [
+      "Dashboard",
+      "Inspected Reports",
+      "Report Completion",
+      "Administrator Tools",
+      "Profile",
+    ],
   };
-  if (!rolePages[role]?.includes(page)) return "Dashboard";
+
+  if (!rolePages[role]?.includes(page)) {
+    return "Dashboard";
+  }
 
   if (
     (page === "Report Details" || page === "Inspector Details") &&
@@ -43,17 +68,11 @@ function getRestoredPage(role, reports) {
 }
 
 export default function App() {
+  const [active, setActive] = useState(() => {
+    return sessionStorage.getItem(ACTIVE_PAGE_STORAGE_KEY) || "Dashboard";
+  });
 
-  const [active, setActive] =
-    useState(() => {
-      const savedEmail = localStorage.getItem("email");
-      return savedEmail
-        ? sessionStorage.getItem(`roadwatch.activePage:${savedEmail}`) || "Dashboard"
-        : "Dashboard";
-    });
-
-  const [sidebarCollapsed, setSidebarCollapsed] =
-    useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const [users, setUsers] = useState([]);
 
@@ -61,65 +80,60 @@ export default function App() {
 
   const [currentUser, setCurrentUser] = useState(null);
 
-  const [role, setRole] =
-    useState(
-      localStorage.getItem(
-        "role"
-      ) || ""
-    );
+  const [role, setRole] = useState(
+    localStorage.getItem("role") || ""
+  );
 
-  const [email, setEmail] =
-    useState(
-      localStorage.getItem(
-        "email"
-      ) || ""
-    );
+  const [email, setEmail] = useState(
+    localStorage.getItem("email") || ""
+  );
 
-  const [password, setPassword] =
-    useState("");
+  const [password, setPassword] = useState("");
 
-  const [
-    authenticated,
-    setAuthenticated,
-  ] = useState(false);
+  const [loginError, setLoginError] = useState("");
+
+  const [authenticated, setAuthenticated] = useState(false);
 
   const [authLoading, setAuthLoading] = useState(
     Boolean(localStorage.getItem("token"))
   );
 
-  const [authPage, setAuthPage] =
-    useState("login");
+  const [authPage, setAuthPage] = useState("login");
 
-  const [modal, setModal] =
-    useState("");
+  const [modal, setModal] = useState("");
 
-  const [
-    showMinorModal,
-    setShowMinorModal,
-  ] = useState(false);
+  const [appError, setAppError] = useState("");
 
-  useEffect(() => {
-    if (authenticated && email) {
-      sessionStorage.setItem(`roadwatch.activePage:${email}`, active);
-    }
-  }, [active, authenticated, email]);
+  const [showMinorModal, setShowMinorModal] = useState(false);
+
+  /* =====================================================
+     RESTORE AUTHENTICATED SESSION
+  ===================================================== */
 
   useEffect(() => {
     const token = localStorage.getItem("token");
+
     if (!token) {
-      setAuthLoading(false);
       return undefined;
     }
 
     let activeRequest = true;
+
     async function restoreSession() {
       try {
         const { user } = await api.get("/auth/me");
+
         const [loadedReports, loadedUsers] = await Promise.all([
           api.get("/reports"),
-          user.role === "Administrator" ? api.get("/users") : Promise.resolve([user]),
+          user.role === "Administrator"
+            ? api.get("/users")
+            : Promise.resolve([user]),
         ]);
-        if (!activeRequest) return;
+
+        if (!activeRequest) {
+          return;
+        }
+
         setCurrentUser(user);
         setRole(user.role);
         setEmail(user.email);
@@ -132,16 +146,24 @@ export default function App() {
         localStorage.removeItem("role");
         localStorage.removeItem("email");
         localStorage.removeItem("authenticated");
+        localStorage.removeItem("user");
       } finally {
-        if (activeRequest) setAuthLoading(false);
+        if (activeRequest) {
+          setAuthLoading(false);
+        }
       }
     }
 
     restoreSession();
+
     return () => {
       activeRequest = false;
     };
   }, []);
+
+  /* =====================================================
+     SAVE ACTIVE PAGE
+  ===================================================== */
 
   useEffect(() => {
     if (authenticated) {
@@ -154,8 +176,19 @@ export default function App() {
   ===================================================== */
 
   async function handleLogin() {
+    setLoginError("");
+    setAppError("");
+
     try {
-      const result = await api.post("/auth/login", { email, password }, false);
+      const result = await api.post(
+        "/auth/login",
+        {
+          email: email.trim(),
+          password,
+        },
+        false
+      );
+
       localStorage.setItem("token", result.token);
       localStorage.setItem("role", result.user.role);
       localStorage.setItem("email", result.user.email);
@@ -163,20 +196,28 @@ export default function App() {
 
       const [loadedReports, loadedUsers] = await Promise.all([
         api.get("/reports"),
-        result.user.role === "Administrator" ? api.get("/users") : Promise.resolve([result.user]),
+        result.user.role === "Administrator"
+          ? api.get("/users")
+          : Promise.resolve([result.user]),
       ]);
+
       setCurrentUser(result.user);
       setRole(result.user.role);
       setEmail(result.user.email);
       setUsers(loadedUsers);
       setReports(loadedReports);
       setPassword("");
+      setLoginError("");
       setAuthenticated(true);
       setActive("Dashboard");
+
       sessionStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
+
       setModal("Login successful.");
     } catch (error) {
-      alert(error.message);
+      setLoginError(
+        error.message || "Unable to log in. Please try again."
+      );
     }
   }
 
@@ -185,13 +226,26 @@ export default function App() {
   ===================================================== */
 
   async function handleRegistrationSuccess(user) {
+    setAppError("");
+
     try {
       const result = await api.post("/auth/register", user, false);
-      setUsers((previousUsers) => [...previousUsers, result.user]);
+
+      setUsers((previousUsers) => [
+        ...previousUsers,
+        result.user,
+      ]);
+
       setAuthPage("login");
-      setModal("Your account has been created successfully.");
+
+      setModal(
+        "Your account has been created successfully."
+      );
     } catch (error) {
-      alert(error.message);
+      setAppError(
+        error.message ||
+          "Your account could not be created. Please try again."
+      );
     }
   }
 
@@ -200,13 +254,26 @@ export default function App() {
   ===================================================== */
 
   async function handleSubmitReport(report) {
+    setAppError("");
+
     try {
       const createdReport = await api.post("/reports", report);
-      setReports((previousReports) => [createdReport, ...previousReports]);
+
+      setReports((previousReports) => [
+        createdReport,
+        ...previousReports,
+      ]);
+
       setActive("My Reports");
-      setModal("Your report has been submitted successfully.");
+
+      setModal(
+        "Your report has been submitted successfully."
+      );
     } catch (error) {
-      alert(error.message);
+      setAppError(
+        error.message ||
+          "Your report could not be submitted. Please try again."
+      );
     }
   }
 
@@ -214,29 +281,61 @@ export default function App() {
      UPDATE REPORT
   ===================================================== */
 
-  async function updateReportStatus(reportId, status, inspection = {}) {
+  async function updateReportStatus(
+    reportId,
+    status,
+    inspection = {}
+  ) {
+    setAppError("");
+
     try {
-      const updatedReport = await api.patch(`/reports/${encodeURIComponent(reportId)}/status`, {
-        status,
-        ...inspection,
-      });
-      setReports((previousReports) => previousReports.map((report) => (
-        report.id === reportId ? updatedReport : report
-      )));
+      const updatedReport = await api.patch(
+        `/reports/${encodeURIComponent(reportId)}/status`,
+        {
+          status,
+          ...inspection,
+        }
+      );
+
+      setReports((previousReports) =>
+        previousReports.map((report) =>
+          report.id === reportId ? updatedReport : report
+        )
+      );
+
       return updatedReport;
     } catch (error) {
-      alert(error.message);
+      setAppError(
+        error.message ||
+          "The report could not be updated. Please try again."
+      );
+
       return null;
     }
   }
 
+  /* =====================================================
+     CREATE ADMIN USER
+  ===================================================== */
+
   async function createAdminUser(user) {
+    setAppError("");
+
     try {
       const createdUser = await api.post("/users", user);
-      setUsers((previousUsers) => [...previousUsers, createdUser]);
+
+      setUsers((previousUsers) => [
+        ...previousUsers,
+        createdUser,
+      ]);
+
       return true;
     } catch (error) {
-      alert(error.message);
+      setAppError(
+        error.message ||
+          "The account could not be created. Please try again."
+      );
+
       return false;
     }
   }
@@ -246,45 +345,71 @@ export default function App() {
   ===================================================== */
 
   function handleLogout() {
-    if (email) {
-      sessionStorage.removeItem(`roadwatch.activePage:${email}`);
-    }
-
-    localStorage.removeItem(
-      "role"
-    );
-
-    localStorage.removeItem(
-      "email"
-    );
-
-    localStorage.removeItem(
-      "authenticated"
-    );
+    localStorage.removeItem("role");
+    localStorage.removeItem("email");
+    localStorage.removeItem("authenticated");
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+
     sessionStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
 
     setRole("");
     setEmail("");
     setCurrentUser(null);
     setPassword("");
-
+    setLoginError("");
+    setAppError("");
     setAuthenticated(false);
-
     setAuthPage("login");
-
     setActive("Dashboard");
   }
+
+  /* =====================================================
+     APPLICATION ERROR MESSAGE
+  ===================================================== */
+
+  const applicationError = appError ? (
+    <div
+      className="app-error-banner"
+      role="alert"
+      aria-live="assertive"
+    >
+      <span
+        className="app-error-icon"
+        aria-hidden="true"
+      >
+        ⚠
+      </span>
+
+      <span className="app-error-message">
+        {appError}
+      </span>
+
+      <button
+        type="button"
+        className="app-error-close"
+        onClick={() => setAppError("")}
+        aria-label="Dismiss error message"
+      >
+        ×
+      </button>
+    </div>
+  ) : null;
 
   /* =====================================================
      AUTHENTICATION SCREEN
   ===================================================== */
 
   if (!authenticated) {
-
     if (authLoading) {
-      return <main className="auth-page" aria-live="polite">Loading account...</main>;
+      return (
+        <main
+          className="auth-page"
+          aria-live="polite"
+        >
+          Loading account...
+        </main>
+      );
     }
 
     if (authPage === "login") {
@@ -294,23 +419,18 @@ export default function App() {
             email={email}
             password={password}
             setEmail={setEmail}
-            setPassword={
-              setPassword
-            }
-            onLogin={
-              handleLogin
-            }
-            setAuthPage={
-              setAuthPage
-            }
+            setPassword={setPassword}
+            onLogin={handleLogin}
+            setAuthPage={setAuthPage}
+            loginError={loginError}
           />
+
+          {applicationError}
 
           {modal && (
             <SuccessModal
               message={modal}
-              onClose={() =>
-                setModal("")
-              }
+              onClose={() => setModal("")}
             />
           )}
         </>
@@ -320,33 +440,23 @@ export default function App() {
     return (
       <>
         <Register
-          setAuthPage={
-            setAuthPage
-          }
-          onRegister={
-            handleRegistrationSuccess
-          }
-          setShowMinorModal={
-            setShowMinorModal
-          }
+          setAuthPage={setAuthPage}
+          onRegister={handleRegistrationSuccess}
+          setShowMinorModal={setShowMinorModal}
         />
+
+        {applicationError}
 
         {modal && (
           <SuccessModal
             message={modal}
-            onClose={() =>
-              setModal("")
-            }
+            onClose={() => setModal("")}
           />
         )}
 
         {showMinorModal && (
           <MinorModal
-            onClose={() =>
-              setShowMinorModal(
-                false
-              )
-            }
+            onClose={() => setShowMinorModal(false)}
           />
         )}
       </>
@@ -357,17 +467,13 @@ export default function App() {
      SELECTED REPORT
   ===================================================== */
 
-  const selectedReportId =
-    active.includes(":")
-      ? active.split(":")[1]
-      : null;
+  const selectedReportId = active.includes(":")
+    ? active.split(":")[1]
+    : null;
 
-  const selectedReport =
-    reports.find(
-      (report) =>
-        report.id ===
-        selectedReportId
-    );
+  const selectedReport = reports.find(
+    (report) => report.id === selectedReportId
+  );
 
   /* =====================================================
      AUTHENTICATED APPLICATION
@@ -375,7 +481,6 @@ export default function App() {
 
   return (
     <div className="app">
-
       <Sidebar
         role={role}
         active={
@@ -383,12 +488,11 @@ export default function App() {
             ? active.split(":")[0]
             : active
         }
-        setActive={
-          setActive
-        }
-        user={
-          currentUser
-        }
+        setActive={(page) => {
+          setAppError("");
+          setActive(page);
+        }}
+        user={currentUser}
         collapsed={sidebarCollapsed}
         onToggle={() =>
           setSidebarCollapsed(
@@ -397,164 +501,105 @@ export default function App() {
         }
       />
 
+      {applicationError}
+
       {/* CITIZEN DASHBOARD */}
 
-      {active ===
-        "Dashboard" &&
-        role === "Citizen" && (
-          <Dashboard
-            setActive={
-              setActive
-            }
-            reports={
-              reports
-            }
-            user={
-              currentUser
-            }
-          />
-        )}
+      {active === "Dashboard" && role === "Citizen" && (
+        <Dashboard
+          setActive={setActive}
+          reports={reports}
+          user={currentUser}
+        />
+      )}
 
       {/* INSPECTOR DASHBOARD */}
 
-      {active ===
-        "Dashboard" &&
-        role ===
-          "Field Inspector" && (
+      {active === "Dashboard" &&
+        role === "Field Inspector" && (
           <InspectorDashboard
-            setActive={
-              setActive
-            }
-            reports={
-              reports
-            }
+            setActive={setActive}
+            reports={reports}
             view="recent"
           />
         )}
 
       {/* ADMIN DASHBOARD */}
 
-      {active ===
-        "Dashboard" &&
-        role ===
-          "Administrator" && (
-          <AdminDashboard
-            reports={reports}
-          />
+      {active === "Dashboard" &&
+        role === "Administrator" && (
+          <AdminDashboard reports={reports} />
         )}
 
       {/* SUBMIT REPORT */}
 
-      {active ===
-        "Submit Report" &&
+      {active === "Submit Report" &&
         role === "Citizen" && (
           <SubmitReport
-            setActive={
-              setActive
-            }
-            user={
-              currentUser
-            }
-            onSubmit={
-              handleSubmitReport
-            }
+            setActive={setActive}
+            user={currentUser}
+            onSubmit={handleSubmitReport}
           />
         )}
 
       {/* MY REPORTS */}
 
-      {active ===
-        "My Reports" &&
+      {active === "My Reports" &&
         role === "Citizen" && (
           <MyReports
-            setActive={
-              setActive
-            }
-            reports={
-              reports
-            }
-            user={
-              currentUser
-            }
+            setActive={setActive}
+            reports={reports}
+            user={currentUser}
           />
         )}
 
       {/* CITIZEN REPORT DETAILS */}
 
-      {active.startsWith(
-        "Report Details:"
-      ) &&
+      {active.startsWith("Report Details:") &&
         role === "Citizen" && (
           <ReportDetails
-            setActive={
-              setActive
-            }
-            report={
-              selectedReport
-            }
+            setActive={setActive}
+            report={selectedReport}
           />
         )}
 
       {/* VERIFICATION QUEUE */}
 
-      {active ===
-        "Verification Queue" &&
-        role ===
-          "Field Inspector" && (
+      {active === "Verification Queue" &&
+        role === "Field Inspector" && (
           <InspectorDashboard
-            setActive={
-              setActive
-            }
-            reports={
-              reports
-            }
+            setActive={setActive}
+            reports={reports}
             view="queue"
           />
         )}
 
       {/* INSPECTOR REPORTS */}
 
-      {active ===
-        "Inspector Reports" &&
-        role ===
-          "Field Inspector" && (
+      {active === "Inspector Reports" &&
+        role === "Field Inspector" && (
           <InspectorReports
-            setActive={
-              setActive
-            }
-            reports={
-              reports
-            }
+            setActive={setActive}
+            reports={reports}
           />
         )}
 
       {/* INSPECTOR DETAILS */}
 
-      {active.startsWith(
-        "Inspector Details:"
-      ) &&
-        role ===
-          "Field Inspector" && (
+      {active.startsWith("Inspector Details:") &&
+        role === "Field Inspector" && (
           <InspectorReportDetails
-            setActive={
-              setActive
-            }
-            report={
-              selectedReport
-            }
+            setActive={setActive}
+            report={selectedReport}
             inspector={currentUser}
-            onUpdateReport={
-              updateReportStatus
-            }
+            onUpdateReport={updateReportStatus}
           />
         )}
 
-      {/* ADMINISTRATOR */}
+      {/* ADMINISTRATOR TOOLS */}
 
-      {active ===
-        "Administrator Tools" &&
-        role ===
-          "Administrator" && (
+      {active === "Administrator Tools" &&
+        role === "Administrator" && (
           <AdminManagement
             reports={reports}
             users={users}
@@ -564,32 +609,22 @@ export default function App() {
 
       {/* ADMIN INSPECTED REPORTS */}
 
-      {active ===
-        "Inspected Reports" &&
-        role ===
-          "Administrator" && (
+      {active === "Inspected Reports" &&
+        role === "Administrator" && (
           <AdminReports
-            reports={
-              reports
-            }
+            reports={reports}
             administrator={currentUser}
-            onUpdateReport={
-              updateReportStatus
-            }
+            onUpdateReport={updateReportStatus}
           />
         )}
 
       {/* ADMIN REPORT COMPLETION */}
 
-      {active ===
-        "Report Completion" &&
-        role ===
-          "Administrator" && (
+      {active === "Report Completion" &&
+        role === "Administrator" && (
           <AdminCompletion
             reports={reports}
-            onUpdateReport={
-              updateReportStatus
-            }
+            onUpdateReport={updateReportStatus}
           />
         )}
 
@@ -597,13 +632,9 @@ export default function App() {
 
       {active === "Profile" && (
         <Profile
-          user={
-            currentUser
-          }
+          user={currentUser}
           role={role}
-          onLogout={
-            handleLogout
-          }
+          onLogout={handleLogout}
         />
       )}
 
@@ -612,12 +643,9 @@ export default function App() {
       {modal && (
         <SuccessModal
           message={modal}
-          onClose={() =>
-            setModal("")
-          }
+          onClose={() => setModal("")}
         />
       )}
-
     </div>
   );
 }

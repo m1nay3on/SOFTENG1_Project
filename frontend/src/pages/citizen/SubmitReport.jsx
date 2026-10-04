@@ -8,17 +8,33 @@ export default function SubmitReport({
   user,
   onSubmit,
 }) {
-  const [form, setForm] =
-    useState({
-      category: "",
-      description: "",
-      location: "",
-      evidence: [],
-    });
-  const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const [form, setForm] = useState({
+    category: "",
+    description: "",
+    location: "",
+    evidence: [],
+  });
 
-  function handleSubmit(e) {
-    e.preventDefault();
+  const [evidenceLoading, setEvidenceLoading] =
+    useState(false);
+
+  const [formError, setFormError] =
+    useState("");
+
+  function updateField(field, value) {
+    setForm((previousForm) => ({
+      ...previousForm,
+      [field]: value,
+    }));
+
+    if (formError) {
+      setFormError("");
+    }
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+    setFormError("");
 
     if (evidenceLoading) {
       return;
@@ -29,112 +45,155 @@ export default function SubmitReport({
       !form.description.trim() ||
       !form.location.trim()
     ) {
-      alert(
+      setFormError(
         "Please complete the category, description, and location before submitting."
       );
-
       return;
     }
 
     const report = {
-      id: `PF-${String(
-        Date.now()
-      ).slice(-4)}`,
+      id: `PF-${String(Date.now()).slice(-4)}`,
 
       issue: form.category,
 
-      category:
-        form.category,
+      category: form.category,
 
-      location:
-        form.location,
+      location: form.location.trim(),
 
-      date:
-        new Date().toLocaleDateString(
-          "en-US",
-          {
-            month: "long",
-            day: "numeric",
-            year: "numeric",
-          }
-        ),
+      date: new Date().toLocaleDateString(
+        "en-US",
+        {
+          month: "long",
+          day: "numeric",
+          year: "numeric",
+        }
+      ),
 
-      time:
-        new Date().toLocaleTimeString(
-          "en-US",
-          {
-            hour: "numeric",
-            minute: "2-digit",
-          }
-        ),
+      time: new Date().toLocaleTimeString(
+        "en-US",
+        {
+          hour: "numeric",
+          minute: "2-digit",
+        }
+      ),
 
       priority: "Medium",
 
       status: "New",
 
-      description:
-        form.description,
+      description: form.description.trim(),
 
       reporter:
         `${user.firstName} ${user.lastName}`,
 
-      reporterEmail:
-        user.email,
+      reporterEmail: user.email,
 
-      evidence:
-        form.evidence,
+      evidence: form.evidence,
     };
 
     onSubmit(report);
   }
 
-  function handleEvidenceChange(e) {
-    const files = Array.from(e.target.files || []);
-    e.target.value = "";
-    if (!files.length) return;
+  function handleEvidenceChange(event) {
+    const files = Array.from(
+      event.target.files || []
+    );
 
-    if (form.evidence.length + files.length > MAX_EVIDENCE_COUNT) {
-      alert(`A report can include up to ${MAX_EVIDENCE_COUNT} photos.`);
+    event.target.value = "";
+    setFormError("");
+
+    if (!files.length) {
       return;
     }
 
-    const invalidType = files.find((file) => !["image/png", "image/jpeg"].includes(file.type));
+    if (
+      form.evidence.length + files.length >
+      MAX_EVIDENCE_COUNT
+    ) {
+      setFormError(
+        `A report can include up to ${MAX_EVIDENCE_COUNT} photos.`
+      );
+      return;
+    }
+
+    const invalidType = files.find(
+      (file) =>
+        !["image/png", "image/jpeg"].includes(
+          file.type
+        )
+    );
+
     if (invalidType) {
-      alert("Please choose PNG or JPEG images.");
+      setFormError(
+        "Please choose PNG or JPEG images."
+      );
       return;
     }
 
-    const oversizedFile = files.find((file) => file.size > MAX_EVIDENCE_SIZE);
+    const oversizedFile = files.find(
+      (file) =>
+        file.size > MAX_EVIDENCE_SIZE
+    );
+
     if (oversizedFile) {
-      alert("Each photo must be 5 MB or smaller.");
+      setFormError(
+        "Each photo must be 5 MB or smaller."
+      );
       return;
     }
 
     setEvidenceLoading(true);
-    Promise.all(files.map((file) => new Promise((resolve, reject) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        if (typeof reader.result !== "string") {
-          reject(new Error(`Could not read ${file.name}.`));
-          return;
-        }
-        resolve({
-          filename: file.name,
-          contentType: file.type,
-          dataUrl: reader.result,
-        });
-      };
-      reader.onerror = () => reject(new Error(`Could not read ${file.name}.`));
-      reader.readAsDataURL(file);
-    })))
+
+    Promise.all(
+      files.map(
+        (file) =>
+          new Promise((resolve, reject) => {
+            const reader = new FileReader();
+
+            reader.onload = () => {
+              if (
+                typeof reader.result !== "string"
+              ) {
+                reject(
+                  new Error(
+                    `Could not read ${file.name}.`
+                  )
+                );
+                return;
+              }
+
+              resolve({
+                filename: file.name,
+                contentType: file.type,
+                dataUrl: reader.result,
+              });
+            };
+
+            reader.onerror = () =>
+              reject(
+                new Error(
+                  `Could not read ${file.name}.`
+                )
+              );
+
+            reader.readAsDataURL(file);
+          })
+      )
+    )
       .then((evidence) => {
         setForm((previousForm) => ({
           ...previousForm,
-          evidence: [...previousForm.evidence, ...evidence],
+          evidence: [
+            ...previousForm.evidence,
+            ...evidence,
+          ],
         }));
       })
       .catch((error) => {
-        alert(error.message);
+        setFormError(
+          error.message ||
+            "The selected photo could not be loaded."
+        );
       })
       .finally(() => {
         setEvidenceLoading(false);
@@ -144,14 +203,20 @@ export default function SubmitReport({
   function removeEvidence(indexToRemove) {
     setForm((previousForm) => ({
       ...previousForm,
-      evidence: previousForm.evidence.filter((_, index) => index !== indexToRemove),
+      evidence:
+        previousForm.evidence.filter(
+          (_, index) =>
+            index !== indexToRemove
+        ),
     }));
+
+    setFormError("");
   }
 
   return (
     <main className="main">
-
       <button
+        type="button"
         className="back-btn"
         onClick={() =>
           setActive("Dashboard")
@@ -173,142 +238,198 @@ export default function SubmitReport({
       </p>
 
       <section className="form-grid">
-
         <form
           className="panel form"
           onSubmit={handleSubmit}
         >
-
-          <label>
+          <label htmlFor="reporter-name">
             Reporter Name
-
-            <input
-              className="readonly-input"
-              value={`${user.firstName} ${user.lastName}`}
-              disabled
-              readOnly
-            />
-
-            <small>
-              Automatically filled from
-              your account.
-            </small>
           </label>
 
-          <label>
+          <input
+            id="reporter-name"
+            name="reporterName"
+            className="readonly-input"
+            value={`${user.firstName} ${user.lastName}`}
+            disabled
+            readOnly
+          />
+
+          <small>
+            Automatically filled from
+            your account.
+          </small>
+
+          <label htmlFor="report-category">
             Category
-
-            <select
-              value={form.category}
-              required
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  category:
-                    e.target.value,
-                })
-              }
-            >
-              <option value="">
-                Select an issue type
-              </option>
-
-              <option value="Road Damage">
-                Road Damage
-              </option>
-
-              <option value="Streetlight">
-                Streetlight
-              </option>
-
-              <option value="Drainage">
-                Drainage
-              </option>
-
-              <option value="Public Facility">
-                Public Facility
-              </option>
-            </select>
           </label>
 
-          <label>
+          <select
+            id="report-category"
+            name="category"
+            value={form.category}
+            required
+            onChange={(event) =>
+              updateField(
+                "category",
+                event.target.value
+              )
+            }
+          >
+            <option value="">
+              Select an issue type
+            </option>
+
+            <option value="Road Damage">
+              Road Damage
+            </option>
+
+            <option value="Streetlight">
+              Streetlight
+            </option>
+
+            <option value="Drainage">
+              Drainage
+            </option>
+
+            <option value="Public Facility">
+              Public Facility
+            </option>
+          </select>
+
+          <label htmlFor="report-description">
             Description
-
-            <textarea
-              placeholder="Describe the damage or issue..."
-              value={
-                form.description
-              }
-              required
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  description:
-                    e.target.value,
-                })
-              }
-            />
           </label>
 
-          <label>
+          <textarea
+            id="report-description"
+            name="description"
+            placeholder="Describe the damage or issue..."
+            value={form.description}
+            required
+            onChange={(event) =>
+              updateField(
+                "description",
+                event.target.value
+              )
+            }
+          />
+
+          <label htmlFor="report-location">
             Exact Location
-
-            <input
-              placeholder="Street / Barangay / Landmark"
-              value={
-                form.location
-              }
-              required
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  location:
-                    e.target.value,
-                })
-              }
-            />
           </label>
 
-          <label className="evidence-upload-label">
+          <input
+            id="report-location"
+            name="location"
+            type="text"
+            placeholder="Street / Barangay / Landmark"
+            value={form.location}
+            required
+            onChange={(event) =>
+              updateField(
+                "location",
+                event.target.value
+              )
+            }
+          />
+
+          <label
+            htmlFor="report-evidence"
+            className="evidence-upload-label"
+          >
             Photo Evidence
-
-            <input
-              className="evidence-file-input"
-              type="file"
-              accept="image/png,image/jpeg"
-              multiple
-              disabled={evidenceLoading || form.evidence.length >= MAX_EVIDENCE_COUNT}
-              onChange={handleEvidenceChange}
-            />
-            <small>
-              Select up to {MAX_EVIDENCE_COUNT} PNG or JPEG photos. Each photo must be 5 MB or smaller
-              ({form.evidence.length}/{MAX_EVIDENCE_COUNT} selected).
-            </small>
           </label>
+
+          <input
+            id="report-evidence"
+            name="evidence"
+            className="evidence-file-input"
+            type="file"
+            accept="image/png,image/jpeg"
+            multiple
+            disabled={
+              evidenceLoading ||
+              form.evidence.length >=
+                MAX_EVIDENCE_COUNT
+            }
+            onChange={handleEvidenceChange}
+          />
+
+          <small>
+            Select up to{" "}
+            {MAX_EVIDENCE_COUNT} PNG or JPEG
+            photos. Each photo must be 5 MB
+            or smaller (
+            {form.evidence.length}/
+            {MAX_EVIDENCE_COUNT} selected).
+          </small>
+
+          {formError && (
+            <div
+              className="login-error report-form-error"
+              role="alert"
+              aria-live="polite"
+            >
+              <span
+                className="login-error-icon"
+                aria-hidden="true"
+              >
+                ⚠
+              </span>
+
+              <span>{formError}</span>
+            </div>
+          )}
 
           {evidenceLoading && (
-            <p role="status">Loading selected photo...</p>
+            <p
+              className="form-status"
+              role="status"
+              aria-live="polite"
+            >
+              Loading selected photo...
+            </p>
           )}
 
           {form.evidence.length > 0 && (
-            <div className="evidence-gallery evidence-preview">
-              {form.evidence.map((photo, index) => (
-                <figure className="evidence-image" key={`${photo.filename}-${index}`}>
-                  <img src={photo.dataUrl} alt={`Selected evidence ${index + 1}`} />
-                  <figcaption>
-                    {photo.filename}
-                    <button
-                      className="remove-evidence"
-                      type="button"
-                      onClick={() => removeEvidence(index)}
-                      disabled={evidenceLoading}
-                      aria-label={`Remove ${photo.filename}`}
-                    >
-                      Remove
-                    </button>
-                  </figcaption>
-                </figure>
-              ))}
+            <div
+              className="evidence-gallery evidence-preview"
+              aria-label="Selected photo evidence"
+            >
+              {form.evidence.map(
+                (photo, index) => (
+                  <figure
+                    className="evidence-image"
+                    key={`${photo.filename}-${index}`}
+                  >
+                    <img
+                      src={photo.dataUrl}
+                      alt={`Selected evidence ${index + 1}: ${photo.filename}`}
+                    />
+
+                    <figcaption>
+                      <span>
+                        {photo.filename}
+                      </span>
+
+                      <button
+                        className="remove-evidence"
+                        type="button"
+                        onClick={() =>
+                          removeEvidence(index)
+                        }
+                        disabled={
+                          evidenceLoading
+                        }
+                        aria-label={`Remove ${photo.filename}`}
+                      >
+                        Remove
+                      </button>
+                    </figcaption>
+                  </figure>
+                )
+              )}
             </div>
           )}
 
@@ -317,28 +438,31 @@ export default function SubmitReport({
             type="submit"
             disabled={evidenceLoading}
           >
-            Submit Report
+            {evidenceLoading
+              ? "Loading Photo..."
+              : "Submit Report"}
           </button>
-
         </form>
 
-        <aside className="panel information-panel">
-
+        <aside
+          className="panel information-panel"
+          aria-labelledby="submission-process-heading"
+        >
           <p className="eyebrow">
             HOW IT WORKS
           </p>
 
-          <h2>
+          <h2 id="submission-process-heading">
             Submission Process
           </h2>
 
           <div className="process-step">
-            <span>01</span>
+            <span aria-hidden="true">
+              01
+            </span>
 
             <div>
-              <strong>
-                Submit
-              </strong>
+              <strong>Submit</strong>
 
               <p>
                 Send your infrastructure
@@ -348,12 +472,12 @@ export default function SubmitReport({
           </div>
 
           <div className="process-step">
-            <span>02</span>
+            <span aria-hidden="true">
+              02
+            </span>
 
             <div>
-              <strong>
-                Verify
-              </strong>
+              <strong>Verify</strong>
 
               <p>
                 An inspector reviews
@@ -363,12 +487,12 @@ export default function SubmitReport({
           </div>
 
           <div className="process-step">
-            <span>03</span>
+            <span aria-hidden="true">
+              03
+            </span>
 
             <div>
-              <strong>
-                Assign
-              </strong>
+              <strong>Assign</strong>
 
               <p>
                 The issue is assigned
@@ -378,12 +502,12 @@ export default function SubmitReport({
           </div>
 
           <div className="process-step">
-            <span>04</span>
+            <span aria-hidden="true">
+              04
+            </span>
 
             <div>
-              <strong>
-                Track
-              </strong>
+              <strong>Track</strong>
 
               <p>
                 Follow the repair
@@ -391,15 +515,8 @@ export default function SubmitReport({
               </p>
             </div>
           </div>
-
         </aside>
-
       </section>
-
     </main>
   );
 }
-
-/* =========================================================
-   MY REPORTS
-========================================================= */

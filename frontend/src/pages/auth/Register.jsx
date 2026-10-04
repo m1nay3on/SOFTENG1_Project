@@ -1,6 +1,7 @@
 ﻿import { useState } from "react";
 import logo from "../../assets/roadwatch-logo.png";
 import { calculateAge } from "../../data/defaultData";
+
 export default function Register({
   setAuthPage,
   onRegister,
@@ -20,36 +21,47 @@ export default function Register({
     confirmPassword: "",
   });
 
+  const [formError, setFormError] = useState("");
+
   function updateField(field, value) {
-    setForm({
-      ...form,
+    setForm((previousForm) => ({
+      ...previousForm,
       [field]: value,
-    });
+    }));
+
+    if (formError) {
+      setFormError("");
+    }
   }
 
-  function handleRegister() {
-    if (
-      !form.firstName ||
-      !form.lastName ||
-      !form.birthday ||
-      !form.mobile ||
-      !form.houseNumber ||
-      !form.street ||
-      !form.barangay ||
-      !form.city ||
-      !form.email ||
-      !form.password ||
-      !form.confirmPassword
-    ) {
-      alert(
-        "Please complete all required fields."
-      );
+  function handleRegister(event) {
+    event.preventDefault();
+    setFormError("");
+
+    const requiredFields = [
+      form.firstName,
+      form.lastName,
+      form.birthday,
+      form.mobile,
+      form.houseNumber,
+      form.street,
+      form.barangay,
+      form.city,
+      form.email,
+      form.password,
+      form.confirmPassword,
+    ];
+
+    const hasEmptyField = requiredFields.some(
+      (value) => !value.trim()
+    );
+
+    if (hasEmptyField) {
+      setFormError("Please complete all required fields.");
       return;
     }
 
-    const age = calculateAge(
-      form.birthday
-    );
+    const age = calculateAge(form.birthday);
 
     if (age < 18) {
       setShowMinorModal(true);
@@ -57,35 +69,31 @@ export default function Register({
     }
 
     if (form.password.length < 6) {
-      alert(
+      setFormError(
         "Password must contain at least 6 characters."
       );
       return;
     }
 
-    if (
-      form.password !==
-      form.confirmPassword
-    ) {
-      alert("Passwords do not match.");
+    if (form.password !== form.confirmPassword) {
+      setFormError("Passwords do not match.");
       return;
     }
 
     const newUser = {
-      firstName: form.firstName,
-      lastName: form.lastName,
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
       birthday: form.birthday,
-      mobile: form.mobile,
+      mobile: form.mobile.trim(),
 
       address: {
-        houseNumber:
-          form.houseNumber,
-        street: form.street,
-        barangay: form.barangay,
-        city: form.city,
+        houseNumber: form.houseNumber.trim(),
+        street: form.street.trim(),
+        barangay: form.barangay.trim(),
+        city: form.city.trim(),
       },
 
-      email: form.email,
+      email: form.email.trim(),
       password: form.password,
       role: "Citizen",
     };
@@ -96,7 +104,6 @@ export default function Register({
   return (
     <main className="auth-page">
       <div className="auth-card register-card">
-
         <div className="register-header">
           <img
             src={logo}
@@ -107,246 +114,302 @@ export default function Register({
           <h1>Create Account</h1>
 
           <p className="auth-subtitle">
-            Join RoadWatch and help monitor
-            your community.
+            Join RoadWatch and help monitor your community.
           </p>
         </div>
 
-        {/* PERSONAL INFORMATION */}
+        <form onSubmit={handleRegister}>
+          {/* PERSONAL INFORMATION */}
 
-        <div className="register-section">
-          <h3>
-            Personal Information
-          </h3>
+          <section
+            className="register-section"
+            aria-labelledby="personal-information-heading"
+          >
+            <h2
+              id="personal-information-heading"
+              className="register-section-title"
+            >
+              Personal Information
+            </h2>
 
-          <div className="two-column">
-            <label>
-              First Name
+            <div className="two-column">
+              <label>
+                First Name
 
-              <input
-                type="text"
-                placeholder="Enter first name"
-                value={form.firstName}
-                onChange={(e) =>
-                  updateField(
-                    "firstName",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
+                <input
+                  name="firstName"
+                  type="text"
+                  placeholder="Enter first name"
+                  value={form.firstName}
+                  onChange={(event) =>
+                    updateField(
+                      "firstName",
+                      event.target.value
+                    )
+                  }
+                  autoComplete="given-name"
+                  required
+                />
+              </label>
 
-            <label>
-              Last Name
+              <label>
+                Last Name
 
-              <input
-                type="text"
-                placeholder="Enter last name"
-                value={form.lastName}
-                onChange={(e) =>
-                  updateField(
-                    "lastName",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
+                <input
+                  name="lastName"
+                  type="text"
+                  placeholder="Enter last name"
+                  value={form.lastName}
+                  onChange={(event) =>
+                    updateField(
+                      "lastName",
+                      event.target.value
+                    )
+                  }
+                  autoComplete="family-name"
+                  required
+                />
+              </label>
 
-            <label>
-              Birthday
+              <label>
+                Birthday
 
-              <input
-                type="date"
-                value={form.birthday}
-                onChange={(e) =>
-                  updateField(
-                    "birthday",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
+                <input
+                  name="birthday"
+                  type="date"
+                  value={form.birthday}
+                  onChange={(event) =>
+                    updateField(
+                      "birthday",
+                      event.target.value
+                    )
+                  }
+                  autoComplete="bday"
+                  required
+                />
+              </label>
 
-            <label>
-              Mobile Number
+              <label>
+                Mobile Number
 
-              <input
-                type="tel"
-                placeholder="09XXXXXXXXX"
-                value={form.mobile}
-                onChange={(e) =>
-                  updateField(
-                    "mobile",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
-          </div>
-        </div>
+                <input
+                  name="mobile"
+                  type="tel"
+                  placeholder="09XXXXXXXXX"
+                  value={form.mobile}
+                  onChange={(event) =>
+                    updateField(
+                      "mobile",
+                      event.target.value
+                    )
+                  }
+                  autoComplete="tel"
+                  inputMode="tel"
+                  required
+                />
+              </label>
+            </div>
+          </section>
 
-        {/* ADDRESS */}
+          {/* ADDRESS */}
 
-        <div className="register-section">
-          <h3>Address</h3>
+          <section
+            className="register-section"
+            aria-labelledby="address-heading"
+          >
+            <h2
+              id="address-heading"
+              className="register-section-title"
+            >
+              Address
+            </h2>
 
-          <div className="address-grid">
-            <label>
-              House No.
+            <div className="address-grid">
+              <label>
+                House No.
 
-              <input
-                type="text"
-                placeholder="House no."
-                value={
-                  form.houseNumber
-                }
-                onChange={(e) =>
-                  updateField(
-                    "houseNumber",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
+                <input
+                  name="houseNumber"
+                  type="text"
+                  placeholder="House no."
+                  value={form.houseNumber}
+                  onChange={(event) =>
+                    updateField(
+                      "houseNumber",
+                      event.target.value
+                    )
+                  }
+                  autoComplete="address-line1"
+                  required
+                />
+              </label>
 
-            <label>
-              Street
+              <label>
+                Street
 
-              <input
-                type="text"
-                placeholder="Street"
-                value={form.street}
-                onChange={(e) =>
-                  updateField(
-                    "street",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
+                <input
+                  name="street"
+                  type="text"
+                  placeholder="Street"
+                  value={form.street}
+                  onChange={(event) =>
+                    updateField(
+                      "street",
+                      event.target.value
+                    )
+                  }
+                  autoComplete="address-line2"
+                  required
+                />
+              </label>
 
-            <label>
-              Barangay
+              <label>
+                Barangay
 
-              <input
-                type="text"
-                placeholder="Barangay"
-                value={form.barangay}
-                onChange={(e) =>
-                  updateField(
-                    "barangay",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
+                <input
+                  name="barangay"
+                  type="text"
+                  placeholder="Barangay"
+                  value={form.barangay}
+                  onChange={(event) =>
+                    updateField(
+                      "barangay",
+                      event.target.value
+                    )
+                  }
+                  required
+                />
+              </label>
 
-            <label>
-              City
+              <label>
+                City
 
-              <input
-                type="text"
-                placeholder="City"
-                value={form.city}
-                onChange={(e) =>
-                  updateField(
-                    "city",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
-          </div>
-        </div>
+                <input
+                  name="city"
+                  type="text"
+                  placeholder="City"
+                  value={form.city}
+                  onChange={(event) =>
+                    updateField(
+                      "city",
+                      event.target.value
+                    )
+                  }
+                  autoComplete="address-level2"
+                  required
+                />
+              </label>
+            </div>
+          </section>
 
-        {/* ACCOUNT INFORMATION */}
+          {/* ACCOUNT INFORMATION */}
 
-        <div className="register-section">
-          <h3>
-            Account Information
-          </h3>
+          <section
+            className="register-section"
+            aria-labelledby="account-information-heading"
+          >
+            <h2
+              id="account-information-heading"
+              className="register-section-title"
+            >
+              Account Information
+            </h2>
 
-          <div className="two-column">
-            <label>
-              Email Address
+            <div className="two-column">
+              <label>
+                Email Address
 
-              <input
-                type="email"
-                placeholder="Enter email address"
-                value={form.email}
-                onChange={(e) =>
-                  updateField(
-                    "email",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
+                <input
+                  name="email"
+                  type="email"
+                  placeholder="Enter email address"
+                  value={form.email}
+                  onChange={(event) =>
+                    updateField(
+                      "email",
+                      event.target.value
+                    )
+                  }
+                  autoComplete="email"
+                  required
+                />
+              </label>
 
-            <label>
-              Password
+              <label>
+                Password
 
-              <input
-                type="password"
-                placeholder="Minimum 6 characters"
-                value={form.password}
-                onChange={(e) =>
-                  updateField(
-                    "password",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
+                <input
+                  name="password"
+                  type="password"
+                  placeholder="Minimum 6 characters"
+                  value={form.password}
+                  onChange={(event) =>
+                    updateField(
+                      "password",
+                      event.target.value
+                    )
+                  }
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
+                />
+              </label>
 
-            <label>
-              Confirm Password
+              <label>
+                Confirm Password
 
-              <input
-                type="password"
-                placeholder="Confirm password"
-                value={
-                  form.confirmPassword
-                }
-                onChange={(e) =>
-                  updateField(
-                    "confirmPassword",
-                    e.target.value
-                  )
-                }
-              />
-            </label>
-          </div>
-        </div>
+                <input
+                  name="confirmPassword"
+                  type="password"
+                  placeholder="Confirm password"
+                  value={form.confirmPassword}
+                  onChange={(event) =>
+                    updateField(
+                      "confirmPassword",
+                      event.target.value
+                    )
+                  }
+                  autoComplete="new-password"
+                  minLength={6}
+                  required
+                />
+              </label>
+            </div>
+          </section>
 
-        {/* CREATE ACCOUNT */}
+          {formError && (
+            <div
+              className="login-error register-error"
+              role="alert"
+              aria-live="polite"
+            >
+              <span
+                className="login-error-icon"
+                aria-hidden="true"
+              >
+                ⚠
+              </span>
+
+              <span>{formError}</span>
+            </div>
+          )}
+
+          <button
+            type="submit"
+            className="gold auth-submit"
+          >
+            Create Account
+          </button>
+        </form>
 
         <button
-          className="gold auth-submit"
-          onClick={handleRegister}
-        >
-          Create Account
-        </button>
-
-        {/* BACK TO LOGIN */}
-
-        <button
+          type="button"
           className="link-btn register-back"
-          onClick={() =>
-            setAuthPage("login")
-          }
+          onClick={() => setAuthPage("login")}
         >
           ← Back to Login
         </button>
-
       </div>
     </main>
   );
 }
-
-/* =========================================================
-   CITIZEN DASHBOARD
-========================================================= */
-
-
-
