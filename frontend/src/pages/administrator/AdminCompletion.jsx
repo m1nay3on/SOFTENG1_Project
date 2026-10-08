@@ -1,4 +1,5 @@
 import { useState } from "react";
+import ModalDialog from "../../components/ModalDialog";
 
 export default function AdminCompletion({
   reports,
@@ -85,6 +86,14 @@ export default function AdminCompletion({
       return sortDirection === "asc" ? comparison : -comparison;
     });
 
+  function handleTabKeyDown(event) {
+    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    event.preventDefault();
+    const nextTab = activeTab === "awaiting" ? "closed" : "awaiting";
+    setActiveTab(nextTab);
+    document.getElementById(`${nextTab}-reports-tab`)?.focus();
+  }
+
   async function closeReport(report) {
     if (updatingReport) return;
     setUpdatingReport(true);
@@ -115,6 +124,8 @@ export default function AdminCompletion({
           role="tab"
           aria-selected={activeTab === "awaiting"}
           aria-controls="awaiting-reports-panel"
+          tabIndex={activeTab === "awaiting" ? 0 : -1}
+          onKeyDown={handleTabKeyDown}
           onClick={() => setActiveTab("awaiting")}
         >
           Awaiting Completion <span>{activeReports.length}</span>
@@ -126,6 +137,8 @@ export default function AdminCompletion({
           role="tab"
           aria-selected={activeTab === "closed"}
           aria-controls="closed-reports-panel"
+          tabIndex={activeTab === "closed" ? 0 : -1}
+          onKeyDown={handleTabKeyDown}
           onClick={() => setActiveTab("closed")}
         >
           Closed Reports <span>{closedRecords.length}</span>
@@ -335,8 +348,13 @@ export default function AdminCompletion({
       )}
 
       {selectedReport && (
-        <div className="modal-overlay">
-          <section className="modal report-preview">
+        <ModalDialog
+          className="report-preview"
+          labelledBy="completion-report-title"
+          onClose={() => {
+            if (!updatingReport) setSelectedReport(null);
+          }}
+        >
             <div className="section-heading">
               <div>
                 <p className="eyebrow">
@@ -344,10 +362,12 @@ export default function AdminCompletion({
                     ? "CLOSED ENDORSEMENT RECORD"
                     : "ENGINEERING OFFICE ENDORSEMENT"}
                 </p>
-                <h2>{selectedReport.id} - {selectedReport.issue}</h2>
+                <h2 id="completion-report-title">{selectedReport.id} - {selectedReport.issue}</h2>
               </div>
               <button
                 className="outline-btn"
+                type="button"
+                disabled={updatingReport}
                 onClick={() => setSelectedReport(null)}
               >
                 Close
@@ -392,8 +412,7 @@ export default function AdminCompletion({
                   : "Confirm Completion & Close"}
               </button>
             )}
-          </section>
-        </div>
+        </ModalDialog>
       )}
     </main>
   );

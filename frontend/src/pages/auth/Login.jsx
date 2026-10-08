@@ -1,4 +1,5 @@
 ﻿import logo from "../../assets/roadwatch-logo.png";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 
 export default function Login({
@@ -8,6 +9,8 @@ export default function Login({
   setPassword,
   onLogin,
   setAuthPage,
+  feedback,
+  onDismissFeedback,
 }) {
   return (
     <main className="auth-page">
@@ -25,17 +28,30 @@ export default function Login({
           System
         </p>
 
-        <div className="form">
+        <form
+          className="form"
+          onSubmit={(event) => {
+            event.preventDefault();
+            onLogin();
+          }}
+        >
+          <FeedbackMessage
+            message={feedback}
+            onDismiss={onDismissFeedback}
+          />
           <label>
             Email Address
 
             <input
               type="email"
+              autoComplete="email"
               placeholder="Enter your email"
+              required
               value={email}
-              onChange={(e) =>
-                setEmail(e.target.value)
-              }
+              onChange={(e) => {
+                setEmail(e.target.value);
+                onDismissFeedback();
+              }}
             />
           </label>
 
@@ -44,27 +60,31 @@ export default function Login({
 
             <input
               type="password"
+              autoComplete="current-password"
               placeholder="Enter your password"
+              required
               value={password}
-              onChange={(e) =>
-                setPassword(e.target.value)
-              }
+              onChange={(e) => {
+                setPassword(e.target.value);
+                onDismissFeedback();
+              }}
             />
           </label>
 
           <button
             className="gold auth-submit"
-            onClick={onLogin}
+            type="submit"
           >
             Log In
           </button>
-        </div>
+        </form>
 
         <p className="auth-footer">
           Don't have an account?
 
           <button
             className="link-btn"
+            type="button"
             onClick={() =>
               setAuthPage("register")
             }
@@ -80,5 +100,3 @@ export default function Login({
 /* =========================================================
    REGISTER / CREATE ACCOUNT
 ========================================================= */
-
-

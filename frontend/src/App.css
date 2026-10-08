@@ -12,9 +12,11 @@ body,
   margin: 0;
   min-height: 100%;
   font-family:
-    Inter,
-    Arial,
-    Helvetica,
+    "SF Pro Display",
+    "SF Pro Text",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
     sans-serif;
 }
 
@@ -2352,8 +2354,10 @@ button {
   white-space: nowrap;
 }
 
-.admin-report-table td:last-child {
-  text-align: right;
+.admin-report-action-column {
+  width: 130px;
+  text-align: center !important;
+  white-space: nowrap;
 }
 
 .report-select-column {
@@ -2795,7 +2799,13 @@ button {
   }
 
   .selected-printable-report {
-    font-family: Arial, Helvetica, sans-serif;
+    font-family:
+      "SF Pro Text",
+      "SF Pro Display",
+      -apple-system,
+      BlinkMacSystemFont,
+      "Segoe UI",
+      sans-serif;
   }
 
   .selected-print-report {
@@ -3126,4 +3136,78 @@ button {
 
 ::-webkit-scrollbar-thumb:hover {
   background: #F4A261;
+}
+
+.feedback-message {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  border: 1px solid rgba(255, 119, 119, 0.55);
+  border-left: 4px solid #FF7777;
+  border-radius: 9px;
+  background: rgba(102, 27, 36, 0.3);
+  color: #FFE2E2;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.feedback-message p {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.feedback-success {
+  border-color: rgba(96, 211, 150, 0.55);
+  border-left-color: #60D396;
+  background: rgba(20, 91, 59, 0.24);
+  color: #D8FFE9;
+}
+
+.feedback-dismiss {
+  flex: 0 0 auto;
+  padding: 2px 4px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.app > .feedback-message {
+  position: fixed;
+  top: 16px;
+  left: calc(50% + 130px);
+  z-index: 80;
+  width: min(640px, calc(100vw - 300px));
+  margin: 0;
+  transform: translateX(-50%);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.3);
+}
+
+.register-form > .feedback-message {
+  margin-bottom: 18px;
+}
+
+.modal:focus {
+  outline: none;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid #F4A261;
+  outline-offset: 2px;
+}
+
+@media (max-width: 800px) {
+  .app > .feedback-message {
+    left: 50%;
+    width: calc(100vw - 28px);
+  }
 }

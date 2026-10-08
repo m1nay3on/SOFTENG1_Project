@@ -1,4 +1,5 @@
 import { useState } from "react";
+import FeedbackMessage from "../../components/FeedbackMessage";
 import EvidencePhoto from "../../components/EvidencePhoto";
 import ReportTimeline from "../../components/ReportTimeline";
 
@@ -17,6 +18,8 @@ export default function InspectorReportDetails({
     useState(
       report?.priority || "Medium"
     );
+  const [validationMessage, setValidationMessage] = useState("");
+  const [saving, setSaving] = useState(false);
   if (!report) {
     return (
       <main className="main">
@@ -44,18 +47,18 @@ export default function InspectorReportDetails({
     );
   }
 
-  function updateStatus(status) {
+  async function updateStatus(status) {
+    if (saving) return;
     if (
       (status === "Rejected" ||
         status === "Verified" ||
         status === "Needs Information") &&
       !notes.trim()
     ) {
-      alert(
-        "Please add inspector notes before saving this decision."
-      );
+      setValidationMessage("Please add inspector notes before saving this decision.");
       return;
     }
+    setValidationMessage("");
 
     const inspection = {
       verificationNotes:
@@ -77,15 +80,13 @@ export default function InspectorReportDetails({
         inspection.inspectedAt;
     }
 
-    onUpdateReport(
-      report.id,
-      status,
-      inspection
-    );
-
-    setActive(
-      "Verification Queue"
-    );
+    setSaving(true);
+    try {
+      const updatedReport = await onUpdateReport(report.id, status, inspection);
+      if (updatedReport) setActive("Verification Queue");
+    } finally {
+      setSaving(false);
+    }
   }
 
   return (
@@ -337,6 +338,10 @@ export default function InspectorReportDetails({
             <h2>
               Inspection Decision
             </h2>
+            <FeedbackMessage
+              message={validationMessage}
+              onDismiss={() => setValidationMessage("")}
+            />
 
             <p className="subtitle">
               Record your findings before
@@ -348,9 +353,7 @@ export default function InspectorReportDetails({
 
               <select
                 value={priority}
-                onChange={(e) =>
-                  setPriority(e.target.value)
-                }
+                onChange={(e) => setPriority(e.target.value)}
               >
                 <option>Low</option>
                 <option>Medium</option>
@@ -365,11 +368,11 @@ export default function InspectorReportDetails({
                 className="notes-area"
                 placeholder="Describe what you found and the recommended action..."
                 value={notes}
-                onChange={(e) =>
-                  setNotes(
-                    e.target.value
-                  )
-                }
+                required
+                onChange={(e) => {
+                  setNotes(e.target.value);
+                  setValidationMessage("");
+                }}
               />
             </label>
 
@@ -392,15 +395,19 @@ export default function InspectorReportDetails({
 
               <button
                 className="gold"
+                type="button"
+                disabled={saving}
                 onClick={() =>
                   updateStatus("Verified")
                 }
               >
-                ✓ Verify Report
+                {saving ? "Saving..." : "✓ Verify Report"}
               </button>
 
               <button
                 className="danger-btn"
+                type="button"
+                disabled={saving}
                 onClick={() =>
                   updateStatus("Rejected")
                 }
@@ -410,6 +417,8 @@ export default function InspectorReportDetails({
 
               <button
                 className="outline-btn"
+                type="button"
+                disabled={saving}
                 onClick={() =>
                   updateStatus(
                     "Needs Information"

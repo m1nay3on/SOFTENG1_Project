@@ -1,4 +1,5 @@
 import { useState } from "react";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 export default function AdminManagement({
   users,
@@ -18,34 +19,34 @@ export default function AdminManagement({
     password: "",
     role: "Citizen",
   });
+  const [feedback, setFeedback] = useState({ message: "", type: "error" });
 
   function updateField(field, value) {
     setForm((previous) => ({
       ...previous,
       [field]: value,
     }));
+    setFeedback({ message: "", type: "error" });
   }
 
   async function createAccount(event) {
     event.preventDefault();
 
-    if (
-      !form.firstName ||
-      !form.lastName ||
-      !form.email ||
-      !form.password
-    ) {
-      alert("Please complete all account fields.");
+    if (![form.firstName, form.lastName, form.email].every((value) => value.trim())) {
+      setFeedback({ message: "Enter a name and email address without leaving the fields blank.", type: "error" });
       return;
     }
 
     if (form.password.length < 6) {
-      alert("Password must contain at least 6 characters.");
+      setFeedback({ message: "Password must contain at least 6 characters.", type: "error" });
       return;
     }
 
     const created = await onCreateUser({
       ...form,
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
+      email: form.email.trim(),
       birthday: "",
       mobile: "",
       address: {
@@ -64,7 +65,7 @@ export default function AdminManagement({
         password: "",
         role: "Citizen",
       });
-      alert("Account created successfully.");
+      setFeedback({ message: "Account created successfully.", type: "success" });
     }
   }
 
@@ -104,10 +105,18 @@ export default function AdminManagement({
         <h2>Create Account</h2>
 
         <form className="form admin-account-form" onSubmit={createAccount}>
+          <FeedbackMessage
+            message={feedback.message}
+            type={feedback.type}
+            onDismiss={() => setFeedback({ message: "", type: "error" })}
+          />
           <div className="two-column">
             <label>
               First Name
               <input
+                type="text"
+                autoComplete="given-name"
+                required
                 value={form.firstName}
                 onChange={(e) =>
                   updateField("firstName", e.target.value)
@@ -118,6 +127,9 @@ export default function AdminManagement({
             <label>
               Last Name
               <input
+                type="text"
+                autoComplete="family-name"
+                required
                 value={form.lastName}
                 onChange={(e) =>
                   updateField("lastName", e.target.value)
@@ -129,6 +141,8 @@ export default function AdminManagement({
               Email
               <input
                 type="email"
+                autoComplete="email"
+                required
                 value={form.email}
                 onChange={(e) =>
                   updateField("email", e.target.value)
@@ -140,6 +154,8 @@ export default function AdminManagement({
               Password
               <input
                 type="password"
+                autoComplete="new-password"
+                required
                 value={form.password}
                 onChange={(e) =>
                   updateField("password", e.target.value)

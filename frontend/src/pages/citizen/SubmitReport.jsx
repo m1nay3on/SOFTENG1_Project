@@ -1,4 +1,5 @@
 ﻿import { useState } from "react";
+import FeedbackMessage from "../../components/FeedbackMessage";
 
 const MAX_EVIDENCE_SIZE = 5 * 1024 * 1024;
 const MAX_EVIDENCE_COUNT = 5;
@@ -16,6 +17,7 @@ export default function SubmitReport({
       evidence: [],
     });
   const [evidenceLoading, setEvidenceLoading] = useState(false);
+  const [validationMessage, setValidationMessage] = useState("");
 
   function handleSubmit(e) {
     e.preventDefault();
@@ -29,12 +31,11 @@ export default function SubmitReport({
       !form.description.trim() ||
       !form.location.trim()
     ) {
-      alert(
-        "Please complete the category, description, and location before submitting."
-      );
+      setValidationMessage("Please complete the category, description, and location before submitting.");
 
       return;
     }
+    setValidationMessage("");
 
     const report = {
       id: `PF-${String(
@@ -47,7 +48,7 @@ export default function SubmitReport({
         form.category,
 
       location:
-        form.location,
+        form.location.trim(),
 
       date:
         new Date().toLocaleDateString(
@@ -73,7 +74,7 @@ export default function SubmitReport({
       status: "New",
 
       description:
-        form.description,
+        form.description.trim(),
 
       reporter:
         `${user.firstName} ${user.lastName}`,
@@ -94,22 +95,23 @@ export default function SubmitReport({
     if (!files.length) return;
 
     if (form.evidence.length + files.length > MAX_EVIDENCE_COUNT) {
-      alert(`A report can include up to ${MAX_EVIDENCE_COUNT} photos.`);
+      setValidationMessage(`A report can include up to ${MAX_EVIDENCE_COUNT} photos.`);
       return;
     }
 
     const invalidType = files.find((file) => !["image/png", "image/jpeg"].includes(file.type));
     if (invalidType) {
-      alert("Please choose PNG or JPEG images.");
+      setValidationMessage("Please choose PNG or JPEG images.");
       return;
     }
 
     const oversizedFile = files.find((file) => file.size > MAX_EVIDENCE_SIZE);
     if (oversizedFile) {
-      alert("Each photo must be 5 MB or smaller.");
+      setValidationMessage("Each photo must be 5 MB or smaller.");
       return;
     }
 
+    setValidationMessage("");
     setEvidenceLoading(true);
     Promise.all(files.map((file) => new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -134,7 +136,7 @@ export default function SubmitReport({
         }));
       })
       .catch((error) => {
-        alert(error.message);
+        setValidationMessage(error.message);
       })
       .finally(() => {
         setEvidenceLoading(false);
@@ -153,6 +155,7 @@ export default function SubmitReport({
 
       <button
         className="back-btn"
+        type="button"
         onClick={() =>
           setActive("Dashboard")
         }
@@ -178,6 +181,10 @@ export default function SubmitReport({
           className="panel form"
           onSubmit={handleSubmit}
         >
+          <FeedbackMessage
+            message={validationMessage}
+            onDismiss={() => setValidationMessage("")}
+          />
 
           <label>
             Reporter Name

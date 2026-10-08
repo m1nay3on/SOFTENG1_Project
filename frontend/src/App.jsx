@@ -2,6 +2,7 @@
 import "./App.css";
 import { api } from "./services/api";
 import SuccessModal, { MinorModal } from "./components/Modals";
+import FeedbackMessage from "./components/FeedbackMessage";
 import Sidebar from "./components/Sidebar";
 import Login from "./pages/auth/Login";
 import Register from "./pages/auth/Register";
@@ -92,6 +93,7 @@ export default function App() {
 
   const [modal, setModal] =
     useState("");
+  const [feedback, setFeedback] = useState("");
 
   const [
     showMinorModal,
@@ -155,7 +157,7 @@ export default function App() {
 
   async function handleLogin() {
     try {
-      const result = await api.post("/auth/login", { email, password }, false);
+      const result = await api.post("/auth/login", { email: email.trim(), password }, false);
       localStorage.setItem("token", result.token);
       localStorage.setItem("role", result.user.role);
       localStorage.setItem("email", result.user.email);
@@ -175,8 +177,9 @@ export default function App() {
       setActive("Dashboard");
       sessionStorage.removeItem(ACTIVE_PAGE_STORAGE_KEY);
       setModal("Login successful.");
+      setFeedback("");
     } catch (error) {
-      alert(error.message);
+      setFeedback(error.message);
     }
   }
 
@@ -190,8 +193,9 @@ export default function App() {
       setUsers((previousUsers) => [...previousUsers, result.user]);
       setAuthPage("login");
       setModal("Your account has been created successfully.");
+      setFeedback("");
     } catch (error) {
-      alert(error.message);
+      setFeedback(error.message);
     }
   }
 
@@ -205,8 +209,9 @@ export default function App() {
       setReports((previousReports) => [createdReport, ...previousReports]);
       setActive("My Reports");
       setModal("Your report has been submitted successfully.");
+      setFeedback("");
     } catch (error) {
-      alert(error.message);
+      setFeedback(error.message);
     }
   }
 
@@ -223,9 +228,10 @@ export default function App() {
       setReports((previousReports) => previousReports.map((report) => (
         report.id === reportId ? updatedReport : report
       )));
+      setFeedback("");
       return updatedReport;
     } catch (error) {
-      alert(error.message);
+      setFeedback(error.message);
       return null;
     }
   }
@@ -234,9 +240,10 @@ export default function App() {
     try {
       const createdUser = await api.post("/users", user);
       setUsers((previousUsers) => [...previousUsers, createdUser]);
+      setFeedback("");
       return true;
     } catch (error) {
-      alert(error.message);
+      setFeedback(error.message);
       return false;
     }
   }
@@ -269,6 +276,7 @@ export default function App() {
     setEmail("");
     setCurrentUser(null);
     setPassword("");
+    setFeedback("");
 
     setAuthenticated(false);
 
@@ -292,6 +300,8 @@ export default function App() {
         <>
           <Login
             email={email}
+            feedback={feedback}
+            onDismissFeedback={() => setFeedback("")}
             password={password}
             setEmail={setEmail}
             setPassword={
@@ -320,6 +330,8 @@ export default function App() {
     return (
       <>
         <Register
+          feedback={feedback}
+          onDismissFeedback={() => setFeedback("")}
           setAuthPage={
             setAuthPage
           }
@@ -395,6 +407,11 @@ export default function App() {
             (collapsed) => !collapsed
           )
         }
+      />
+
+      <FeedbackMessage
+        message={feedback}
+        onDismiss={() => setFeedback("")}
       />
 
       {/* CITIZEN DASHBOARD */}

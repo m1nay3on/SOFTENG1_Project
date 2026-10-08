@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { api } from "../services/api";
+import ModalDialog from "./ModalDialog";
 
 export default function EvidencePhoto({ report, clickable = false }) {
   const [requestState, setRequestState] = useState({
@@ -96,22 +97,16 @@ export default function EvidencePhoto({ report, clickable = false }) {
         </figure>
       ))}
       {selectedPhoto && (
-        <div className="evidence-lightbox">
-          <button
-            className="evidence-lightbox-backdrop"
-            type="button"
-            onClick={() => setSelectedPhoto(null)}
-            aria-label="Close enlarged photo"
-          />
-          <section
+        <ModalDialog
             className="evidence-lightbox-content"
-            role="dialog"
-            aria-modal="true"
-            aria-label={`Evidence photo: ${selectedPhoto.filename}`}
+            overlayClassName="evidence-lightbox"
+            label={`Evidence photo: ${selectedPhoto.filename}`}
+            onClose={() => setSelectedPhoto(null)}
           >
             <button
               className="evidence-lightbox-close"
               type="button"
+              data-modal-autofocus
               onClick={() => setSelectedPhoto(null)}
               aria-label="Close enlarged photo"
             >
@@ -119,8 +114,7 @@ export default function EvidencePhoto({ report, clickable = false }) {
             </button>
             <img src={selectedPhoto.dataUrl} alt={`Full-size evidence for report ${report.id}`} />
             <p>{selectedPhoto.filename}</p>
-          </section>
-        </div>
+        </ModalDialog>
       )}
     </div>
   );

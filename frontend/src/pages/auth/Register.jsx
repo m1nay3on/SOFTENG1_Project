@@ -1,11 +1,18 @@
 ﻿import { useState } from "react";
 import logo from "../../assets/roadwatch-logo.png";
 import { calculateAge } from "../../data/defaultData";
+import FeedbackMessage from "../../components/FeedbackMessage";
 export default function Register({
   setAuthPage,
   onRegister,
   setShowMinorModal,
+  feedback,
+  onDismissFeedback,
 }) {
+  const [validationMessage, setValidationMessage] = useState("");
+  const today = new Date();
+  today.setMinutes(today.getMinutes() - today.getTimezoneOffset());
+  const maxBirthday = today.toISOString().slice(0, 10);
   const [form, setForm] = useState({
     firstName: "",
     lastName: "",
@@ -21,29 +28,28 @@ export default function Register({
   });
 
   function updateField(field, value) {
-    setForm({
-      ...form,
+    setForm((previousForm) => ({
+      ...previousForm,
       [field]: value,
-    });
+    }));
+    setValidationMessage("");
+    onDismissFeedback();
   }
 
-  function handleRegister() {
-    if (
-      !form.firstName ||
-      !form.lastName ||
-      !form.birthday ||
-      !form.mobile ||
-      !form.houseNumber ||
-      !form.street ||
-      !form.barangay ||
-      !form.city ||
-      !form.email ||
-      !form.password ||
-      !form.confirmPassword
-    ) {
-      alert(
-        "Please complete all required fields."
-      );
+  function handleRegister(event) {
+    event.preventDefault();
+    const requiredTextFields = [
+      form.firstName,
+      form.lastName,
+      form.mobile,
+      form.houseNumber,
+      form.street,
+      form.barangay,
+      form.city,
+      form.email,
+    ];
+    if (requiredTextFields.some((value) => !value.trim())) {
+      setValidationMessage("Complete all required fields. Spaces alone do not count.");
       return;
     }
 
@@ -51,15 +57,18 @@ export default function Register({
       form.birthday
     );
 
+    if (age < 0) {
+      setValidationMessage("Birthday cannot be in the future.");
+      return;
+    }
+
     if (age < 18) {
       setShowMinorModal(true);
       return;
     }
 
     if (form.password.length < 6) {
-      alert(
-        "Password must contain at least 6 characters."
-      );
+      setValidationMessage("Password must contain at least 6 characters.");
       return;
     }
 
@@ -67,25 +76,25 @@ export default function Register({
       form.password !==
       form.confirmPassword
     ) {
-      alert("Passwords do not match.");
+      setValidationMessage("Passwords do not match.");
       return;
     }
 
     const newUser = {
-      firstName: form.firstName,
-      lastName: form.lastName,
+      firstName: form.firstName.trim(),
+      lastName: form.lastName.trim(),
       birthday: form.birthday,
-      mobile: form.mobile,
+      mobile: form.mobile.trim(),
 
       address: {
         houseNumber:
-          form.houseNumber,
-        street: form.street,
-        barangay: form.barangay,
-        city: form.city,
+        form.houseNumber.trim(),
+        street: form.street.trim(),
+        barangay: form.barangay.trim(),
+        city: form.city.trim(),
       },
 
-      email: form.email,
+      email: form.email.trim(),
       password: form.password,
       role: "Citizen",
     };
@@ -112,6 +121,16 @@ export default function Register({
           </p>
         </div>
 
+        <form className="register-form" onSubmit={handleRegister}>
+        <FeedbackMessage
+          message={validationMessage}
+          onDismiss={() => setValidationMessage("")}
+        />
+        <FeedbackMessage
+          message={feedback}
+          onDismiss={onDismissFeedback}
+        />
+
         {/* PERSONAL INFORMATION */}
 
         <div className="register-section">
@@ -125,6 +144,8 @@ export default function Register({
 
               <input
                 type="text"
+                autoComplete="given-name"
+                required
                 placeholder="Enter first name"
                 value={form.firstName}
                 onChange={(e) =>
@@ -141,6 +162,8 @@ export default function Register({
 
               <input
                 type="text"
+                autoComplete="family-name"
+                required
                 placeholder="Enter last name"
                 value={form.lastName}
                 onChange={(e) =>
@@ -157,6 +180,9 @@ export default function Register({
 
               <input
                 type="date"
+                autoComplete="bday"
+                max={maxBirthday}
+                required
                 value={form.birthday}
                 onChange={(e) =>
                   updateField(
@@ -172,6 +198,9 @@ export default function Register({
 
               <input
                 type="tel"
+                autoComplete="tel"
+                pattern="[0-9+() -]{7,20}"
+                required
                 placeholder="09XXXXXXXXX"
                 value={form.mobile}
                 onChange={(e) =>
@@ -196,6 +225,8 @@ export default function Register({
 
               <input
                 type="text"
+                autoComplete="address-line1"
+                required
                 placeholder="House no."
                 value={
                   form.houseNumber
@@ -214,6 +245,8 @@ export default function Register({
 
               <input
                 type="text"
+                autoComplete="address-line2"
+                required
                 placeholder="Street"
                 value={form.street}
                 onChange={(e) =>
@@ -230,6 +263,8 @@ export default function Register({
 
               <input
                 type="text"
+                autoComplete="address-level3"
+                required
                 placeholder="Barangay"
                 value={form.barangay}
                 onChange={(e) =>
@@ -246,6 +281,8 @@ export default function Register({
 
               <input
                 type="text"
+                autoComplete="address-level2"
+                required
                 placeholder="City"
                 value={form.city}
                 onChange={(e) =>
@@ -272,6 +309,8 @@ export default function Register({
 
               <input
                 type="email"
+                autoComplete="email"
+                required
                 placeholder="Enter email address"
                 value={form.email}
                 onChange={(e) =>
@@ -288,6 +327,8 @@ export default function Register({
 
               <input
                 type="password"
+                autoComplete="new-password"
+                required
                 placeholder="Minimum 6 characters"
                 value={form.password}
                 onChange={(e) =>
@@ -304,6 +345,8 @@ export default function Register({
 
               <input
                 type="password"
+                autoComplete="new-password"
+                required
                 placeholder="Confirm password"
                 value={
                   form.confirmPassword
@@ -321,17 +364,16 @@ export default function Register({
 
         {/* CREATE ACCOUNT */}
 
-        <button
-          className="gold auth-submit"
-          onClick={handleRegister}
-        >
+        <button className="gold auth-submit" type="submit">
           Create Account
         </button>
+        </form>
 
         {/* BACK TO LOGIN */}
 
         <button
           className="link-btn register-back"
+          type="button"
           onClick={() =>
             setAuthPage("login")
           }
@@ -347,6 +389,3 @@ export default function Register({
 /* =========================================================
    CITIZEN DASHBOARD
 ========================================================= */
-
-
-

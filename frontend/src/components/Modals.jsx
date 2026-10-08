@@ -1,10 +1,14 @@
 ﻿import logo from "../assets/roadwatch-logo.png";
+import ModalDialog from "./ModalDialog";
 
 
 export default function SuccessModal({ message, onClose }) {
   return (
-    <div className="modal-overlay">
-      <div className="modal success-modal">
+    <ModalDialog
+      className="success-modal"
+      labelledBy="success-modal-title"
+      onClose={onClose}
+    >
         <img
           src={logo}
           alt="RoadWatch Logo"
@@ -15,7 +19,7 @@ export default function SuccessModal({ message, onClose }) {
           ✓
         </div>
 
-        <h2>Success</h2>
+        <h2 id="success-modal-title">Success</h2>
 
         <p>{message}</p>
 
@@ -25,8 +29,7 @@ export default function SuccessModal({ message, onClose }) {
         >
           Continue
         </button>
-      </div>
-    </div>
+    </ModalDialog>
   );
 }
 
@@ -38,13 +41,16 @@ export default function SuccessModal({ message, onClose }) {
 
 export function MinorModal({ onClose }) {
   return (
-    <div className="modal-overlay">
-      <div className="modal warning-modal">
+    <ModalDialog
+      className="warning-modal"
+      labelledBy="minor-modal-title"
+      onClose={onClose}
+    >
         <div className="warning-icon">
           !
         </div>
 
-        <h2>Registration Blocked</h2>
+        <h2 id="minor-modal-title">Registration Blocked</h2>
 
         <p>
           You must be at least 18 years old
@@ -57,14 +63,12 @@ export function MinorModal({ onClose }) {
         >
           Close
         </button>
-      </div>
-    </div>
+    </ModalDialog>
   );
 }
 
 /* =========================================================
    SIDEBAR
 ========================================================= */
-
 
 

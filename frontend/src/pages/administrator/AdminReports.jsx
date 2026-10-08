@@ -1,4 +1,6 @@
 import { useEffect, useState } from "react";
+import FeedbackMessage from "../../components/FeedbackMessage";
+import ModalDialog from "../../components/ModalDialog";
 
 const ENDORSED_STATUS = "Endorsed to Engineering Office";
 
@@ -17,17 +19,25 @@ export default function AdminReports({
   const [generatedPdfAt, setGeneratedPdfAt] = useState("");
   const [selectedReportIds, setSelectedReportIds] = useState([]);
   const [selectedPrintReports, setSelectedPrintReports] = useState(null);
+  const [pendingEndorsement, setPendingEndorsement] = useState(null);
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [feedback, setFeedback] = useState("");
 
   useEffect(() => {
     if (!selectedPrintReports) return undefined;
 
-    function clearPrintReport() {
+    function handleAfterPrint() {
       setSelectedPrintReports(null);
+      setPendingEndorsement((current) => (
+        current ? { ...current, phase: "printed" } : null
+      ));
     }
-    window.addEventListener("afterprint", clearPrintReport, { once: true });
-    window.print();
-    return () => window.removeEventListener("afterprint", clearPrintReport);
+    window.addEventListener("afterprint", handleAfterPrint, { once: true });
+    const printTimeout = window.setTimeout(() => window.print(), 100);
+    return () => {
+      window.clearTimeout(printTimeout);
+      window.removeEventListener("afterprint", handleAfterPrint);
+    };
   }, [selectedPrintReports]);
 
   const inspectedReports = reports.filter(
@@ -117,24 +127,21 @@ export default function AdminReports({
       return;
     }
 
+    if (pendingStatus === ENDORSED_STATUS) {
+      startEndorsementPrint([selectedReport], new Date().toISOString());
+      setPendingStatus("");
+      setSelectedReport(null);
+      return;
+    }
+
     setStatusUpdating(true);
     try {
-      const reportGeneratedAt = pendingStatus === ENDORSED_STATUS
-        ? new Date().toISOString()
-        : "";
       const updatedReport = await onUpdateReport(selectedReport.id, pendingStatus, {
         statusChangedAt: new Date().toISOString(),
-        ...(pendingStatus === ENDORSED_STATUS ? {
-          reportGeneratedAt,
-        } : {}),
       });
       if (!updatedReport) return;
       setPendingStatus("");
       setSelectedReport(null);
-      if (pendingStatus === ENDORSED_STATUS) {
-        setGeneratedPdfAt(reportGeneratedAt);
-        setSelectedPrintReports([updatedReport]);
-      }
     } finally {
       setStatusUpdating(false);
     }
@@ -155,6 +162,69 @@ export default function AdminReports({
     }, 100);
   }
 
+  function startEndorsementPrint(reportsToEndorse, generatedAt) {
+    const administratorName = administrator?.name ||
+      `${administrator?.firstName || ""} ${administrator?.lastName || ""}`.trim() ||
+      administrator?.email ||
+      "Administrator";
+    const printReports = reportsToEndorse.map((report) => ({
+      ...report,
+      status: ENDORSED_STATUS,
+      endorsedTo: "Engineering Office",
+      endorsedAt: generatedAt,
+      endorsedBy: administratorName,
+      reportGeneratedAt: generatedAt,
+    }));
+
+    setPendingEndorsement({
+      reports: reportsToEndorse,
+      generatedAt,
+      phase: "printing",
+    });
+    setPendingStatus("");
+    setGeneratedPdfAt(generatedAt);
+    setSelectedReport(null);
+    setSelectedPrintReports(printReports);
+  }
+
+  async function confirmEndorsementAfterPrint() {
+    if (!pendingEndorsement || pendingEndorsement.phase !== "printed" || bulkUpdating) {
+      return;
+    }
+
+    setBulkUpdating(true);
+    try {
+      const results = await Promise.all(pendingEndorsement.reports.map(async (report) => ({
+        report,
+        result: await onUpdateReport(report.id, ENDORSED_STATUS, {
+          statusChangedAt: new Date().toISOString(),
+          reportGeneratedAt: pendingEndorsement.generatedAt,
+        }),
+      })));
+      const failedReports = results.filter(({ result }) => !result);
+      const endorsedReports = results
+        .filter(({ result }) => result)
+        .map(({ result }) => result);
+      const succeededIds = endorsedReports.map((report) => report.id);
+
+      setSelectedReportIds((currentIds) => currentIds.filter((id) => !succeededIds.includes(id)));
+      if (failedReports.length) {
+        setPendingEndorsement((current) => ({
+          ...current,
+          reports: failedReports.map(({ report }) => report),
+        }));
+        setFeedback(
+          `${failedReports.length} report(s) could not be endorsed. ` +
+          `You can retry: ${failedReports.map(({ report }) => report.id).join(", ")}.`
+        );
+      } else {
+        setPendingEndorsement(null);
+      }
+    } finally {
+      setBulkUpdating(false);
+    }
+  }
+
   function toggleReportSelection(reportId) {
     setSelectedReportIds((currentIds) => (
       currentIds.includes(reportId)
@@ -173,47 +243,28 @@ export default function AdminReports({
   }
 
   async function generateAndEndorseSelected() {
-    if (bulkUpdating) return;
+    if (bulkUpdating || pendingEndorsement) return;
     const reportsToGenerate = selectedVerifiedReports;
     if (!reportsToGenerate.length) {
-      alert("Select at least one verified report to generate and endorse.");
+      setFeedback("Select at least one verified report to generate and endorse.");
       return;
     }
 
-    const reportGeneratedAt = new Date().toISOString();
-    setBulkUpdating(true);
-    setSelectedReport(null);
-    setGeneratedPdfAt(reportGeneratedAt);
-    try {
-      const results = await Promise.all(reportsToGenerate.map(async (report) => ({
-        report,
-        result: await onUpdateReport(report.id, ENDORSED_STATUS, {
-          reportGeneratedAt,
-        }),
-      })));
-      const failedReports = results.filter(({ result }) => !result);
-      const endorsedReports = results
-        .filter(({ result }) => result)
-        .map(({ result }) => result);
-      const succeededIds = endorsedReports.map((report) => report.id);
-      setSelectedReportIds((currentIds) => currentIds.filter((id) => !succeededIds.includes(id)));
-      setSelectedPrintReports(endorsedReports.length ? endorsedReports : null);
-
-      if (failedReports.length) {
-        alert(
-          `${failedReports.length} report(s) could not be endorsed. ` +
-          `You can retry: ${failedReports.map(({ report }) => report.id).join(", ")}.`
-        );
-      }
-    } finally {
-      setBulkUpdating(false);
-    }
+    setPendingEndorsement({
+      reports: reportsToGenerate,
+      generatedAt: new Date().toISOString(),
+      phase: "confirm",
+    });
   }
 
   return (
     <main className="main">
 
       <div className="admin-page no-print">
+        <FeedbackMessage
+          message={feedback}
+          onDismiss={() => setFeedback("")}
+        />
         <p className="eyebrow">
           ADMINISTRATION
         </p>
@@ -253,6 +304,7 @@ export default function AdminReports({
                 placeholder="ID, issue, location..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
+                aria-label="Search reports"
               />
             </label>
             <label>
@@ -260,6 +312,7 @@ export default function AdminReports({
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
+                aria-label="Sort inspected reports by"
               >
                 <option value="date">Reviewed date</option>
                 <option value="priority">Priority</option>
@@ -292,7 +345,7 @@ export default function AdminReports({
               className="gold"
               type="button"
               onClick={generateAndEndorseSelected}
-              disabled={!selectedVerifiedReports.length || bulkUpdating}
+              disabled={!selectedVerifiedReports.length || bulkUpdating || Boolean(pendingEndorsement)}
             >
               {bulkUpdating
                 ? "Generating and endorsing..."
@@ -321,7 +374,7 @@ export default function AdminReports({
                     <th>Priority</th>
                     <th>Status</th>
                     <th>Reviewed</th>
-                    <th>Action</th>
+                    <th className="admin-report-action-column">Action</th>
                   </tr>
                 </thead>
 
@@ -376,11 +429,10 @@ export default function AdminReports({
                           : "Not available"}
                       </td>
 
-                      <td>
+                      <td className="admin-report-action-column">
                         <button
                           className="outline-btn small-btn"
                           onClick={() => {
-                            setRangeReports(null);
                             setSelectedReport(report);
                           }}
                         >
@@ -395,16 +447,20 @@ export default function AdminReports({
           )}
         </section>
 
-        {selectedReport && (
-          <div className="modal-overlay no-print">
-            <section className="modal report-preview">
+        {selectedReport && !pendingStatus && (
+          <ModalDialog
+            className="report-preview"
+            overlayClassName="no-print"
+            labelledBy="report-preview-title"
+            onClose={closeReportModal}
+          >
             <div className="section-heading">
               <div>
                 <p className="eyebrow">
                   INSPECTION REPORT
                 </p>
 
-                <h2>
+                <h2 id="report-preview-title">
                   {selectedReport.id} â€”{" "}
                   {selectedReport.issue}
                 </h2>
@@ -487,18 +543,19 @@ export default function AdminReports({
                 </select>
               </label>
             )}
-            </section>
-          </div>
+          </ModalDialog>
         )}
 
         {pendingStatus && selectedReport && (
-          <div className="modal-overlay no-print">
-            <section
-              className="modal confirmation-modal"
-              role="alertdialog"
-              aria-modal="true"
-              aria-labelledby="status-confirmation-title"
-            >
+          <ModalDialog
+            className="confirmation-modal"
+            overlayClassName="no-print"
+            role="alertdialog"
+            labelledBy="status-confirmation-title"
+            onClose={() => {
+              if (!statusUpdating) setPendingStatus("");
+            }}
+          >
               <div className="warning-icon">!</div>
               <h2 id="status-confirmation-title">
                 Confirm Status Change
@@ -510,7 +567,7 @@ export default function AdminReports({
               </p>
               {pendingStatus === ENDORSED_STATUS && (
                 <p>
-                  Confirm endorsement to the Engineering Office. The inspection report PDF will be generated after confirmation.
+                  The inspection report PDF must be printed or saved before the report status is updated. You will be asked to confirm after the print dialog closes.
                 </p>
               )}
               {pendingStatus === "Closed" && selectedReport.status === ENDORSED_STATUS && (
@@ -529,11 +586,76 @@ export default function AdminReports({
                   onClick={confirmStatusChange}
                   disabled={statusUpdating}
                 >
-                  {statusUpdating ? "Saving..." : "Confirm Change"}
+                  {statusUpdating
+                    ? "Saving..."
+                    : pendingStatus === ENDORSED_STATUS
+                      ? "Generate PDF"
+                      : "Confirm Change"}
                 </button>
               </div>
-            </section>
-          </div>
+          </ModalDialog>
+        )}
+
+        {pendingEndorsement && ["confirm", "printed"].includes(pendingEndorsement.phase) && (
+          <ModalDialog
+            className="confirmation-modal"
+            overlayClassName="no-print"
+            role="alertdialog"
+            labelledBy="endorsement-confirmation-title"
+            onClose={() => {
+              if (!bulkUpdating) setPendingEndorsement(null);
+            }}
+          >
+              <div className="warning-icon">!</div>
+              <h2 id="endorsement-confirmation-title">
+                {pendingEndorsement.phase === "confirm"
+                  ? "Generate Endorsement PDF?"
+                  : "Confirm PDF Was Printed"}
+              </h2>
+              {pendingEndorsement.phase === "confirm" ? (
+                <p>
+                  Generate the PDF for {pendingEndorsement.reports.length} selected report(s) first. Their status will only be updated after you confirm that you printed or saved the PDF.
+                </p>
+              ) : (
+                <p>
+                  If you printed or saved the PDF, confirm to endorse{" "}
+                  {pendingEndorsement.reports.length} report(s). If you canceled the print dialog or did not save the PDF, choose Cancel; no status will be changed.
+                </p>
+              )}
+              <div className="action-buttons">
+                <button
+                  className="outline-btn"
+                  onClick={() => setPendingEndorsement(null)}
+                  disabled={bulkUpdating}
+                >
+                  Cancel
+                </button>
+                {pendingEndorsement.phase === "confirm" ? (
+                  <button
+                    className="gold"
+                    onClick={() => startEndorsementPrint(
+                      pendingEndorsement.reports,
+                      pendingEndorsement.generatedAt
+                    )}
+                    disabled={bulkUpdating}
+                  >
+                    Generate PDF
+                  </button>
+                ) : (
+                  <button
+                    className="gold"
+                    onClick={confirmEndorsementAfterPrint}
+                    disabled={bulkUpdating}
+                  >
+                    {bulkUpdating
+                      ? "Updating..."
+                      : pendingEndorsement.reports.length > 1
+                        ? "PDF Printed — Endorse Reports"
+                        : "PDF Printed — Endorse Report"}
+                  </button>
+                )}
+              </div>
+          </ModalDialog>
         )}
 
       </div>
